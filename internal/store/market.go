@@ -98,6 +98,18 @@ type marketAPI struct {
 	ResponseType       string          `json:"responseType"`
 }
 
+// paramDefaultOverrides 同步时对个别参数默认值做本地覆盖：
+// 上游示例值带假链接（如 /video/1234567890123456789）会在前台表单里预填出来，
+// 这里换成真实可解析的演示作品，避免用户一进来就 404。
+var paramDefaultOverrides = map[string]map[string]string{
+	"dytj": {
+		"url":      "https://www.douyin.com/video/7699804945230384411",
+		"id":       "7699804945230384411",
+		"aweme_id": "7699804945230384411",
+		"item_id":  "7699804945230384411",
+	},
+}
+
 // decodeLoose 兼容「字段是 JSON 文本」与「字段已是对象/数组」两种形态
 func decodeLoose(raw json.RawMessage, dst any) error {
 	if len(raw) == 0 {
@@ -234,6 +246,12 @@ func (s *Store) SyncFromMarket(base string) (int, []string, error) {
 					def := ""
 					if p.ExampleValue != "" {
 						def = p.ExampleValue
+					}
+					// 本地默认值覆盖：上游示例值里带假链接/占位 ID 的，用可用的演示值替代
+					if ov, ok := paramDefaultOverrides[code]; ok {
+						if v, ok := ov[p.Name]; ok {
+							def = v
+						}
 					}
 					params = append(params, Param{
 						Name: p.Name, Type: p.Type, Required: p.Required,

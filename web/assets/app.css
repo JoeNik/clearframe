@@ -1775,3 +1775,67 @@ details.acc-dev > .panel-body { border-top: 1px solid var(--line); }
   .acc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .acc-v { font-size: 14.5px; }
 }
+
+/* ==========================================================================
+   数据洞察 v2：主指标 / 转化副行 / 自动洞察 / 交互趋势图
+   ========================================================================== */
+.stat-hero {
+  display: flex; align-items: stretch; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  margin: 4px 0 14px; padding: 16px 20px;
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--accent-dim), transparent 55%), var(--bg-2);
+}
+.sh-label { font-size: 12px; color: var(--text-2); letter-spacing: 0.04em; }
+.sh-val {
+  font-family: var(--mono); font-size: 42px; font-weight: 700; line-height: 1.15;
+  color: var(--text); letter-spacing: -0.01em; margin: 2px 0 4px;
+}
+.sh-sub { font-size: 12px; color: var(--text-2); }
+.sh-sub b { color: var(--accent); font-family: var(--mono); font-weight: 600; }
+.sh-side { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.metric-sub { font-size: 10.5px; color: var(--text-3); margin-top: 3px; font-family: var(--mono); }
+
+.insights { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px 14px; border: 1px dashed var(--line-2); border-radius: var(--radius); background: var(--bg-2); }
+.ins-row { display: flex; gap: 9px; font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+.ins-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex: none; }
+
+.t2-tabs { display: flex; gap: 6px; margin: 2px 0 10px; flex-wrap: wrap; }
+.t2-tab {
+  border: 1px solid var(--line-2); background: transparent; color: var(--text-3);
+  font-size: 11.5px; font-family: var(--sans); padding: 4px 13px; border-radius: 999px;
+  cursor: pointer; transition: var(--t);
+}
+.t2-tab:hover { color: var(--text); border-color: var(--line-3); }
+.t2-tab.on { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.t2-hint { font-style: normal; font-size: 10.5px; color: var(--text-3); font-weight: 400; margin-left: 6px; }
+.t2-wrap { position: relative; }
+.t2-svg { width: 100%; height: 210px; display: block; overflow: visible; }
+.t2-grid { stroke: var(--line); stroke-width: 1; }
+.t2-ser { opacity: 0; transition: opacity 0.18s var(--ease); }
+.t2-ser.on { opacity: 1; }
+.t2-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.t2-dot { fill: var(--accent); opacity: 0; transition: opacity 0.18s var(--ease); }
+.t2-dot.on { opacity: 1; }
+.t2-xlab { fill: var(--text-3); font-size: 10px; font-family: var(--mono); }
+.t2-cursor { stroke: var(--line-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.t2-peak b { color: var(--accent); font-family: var(--mono); }
+.t2-tip {
+  position: absolute; top: 2px; transform: translateX(-50%); min-width: 138px;
+  display: none; grid-template-columns: auto auto; gap: 3px 12px; align-items: baseline;
+  padding: 8px 11px; border: 1px solid var(--line-2); border-radius: 8px;
+  background: var(--bg-4); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  font-size: 11px; pointer-events: none; z-index: 6; white-space: nowrap;
+}
+.t2-tip.on { display: grid; }
+.t2-tip b { grid-column: 1 / -1; color: var(--accent); font-family: var(--mono); font-size: 11px; }
+.t2-tip span { color: var(--text-3); }
+.t2-tip em { font-style: normal; font-family: var(--mono); color: var(--text); text-align: right; }
+
+.gloss { margin-top: 13px; font-size: 10.5px; color: var(--text-3); line-height: 1.7; }
+
+@media (max-width: 720px) {
+  .stat-hero { padding: 14px 16px; }
+  .sh-val { font-size: 32px; }
+  .t2-svg { height: 160px; }
+  .t2-tip { min-width: 118px; }
+}

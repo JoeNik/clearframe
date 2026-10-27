@@ -23,6 +23,7 @@
 
   const CHIPS = [
     { label: '抖音', slug: 'dyjx', demo: 'https://v.douyin.com/XBwlKFr1ya0/' },
+    { label: '作品数据', slug: 'dytj', demo: 'https://www.douyin.com/video/7699804945230384411' },
     { label: '快手', slug: 'ksjx', demo: 'https://v.kuaishou.com/KAjGG5zb' },
     { label: 'B站', slug: 'bilibili', demo: 'https://www.bilibili.com/video/BV1GJ411x7h7' },
     { label: '视频号', slug: 'wxsph', demo: '' },
