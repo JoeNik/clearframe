@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理控制台 · 清影 ClearFrame</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+
+<div id="loginView" class="login-wrap hidden">
+  <div class="login-card">
+    <div class="brand">
+      <span class="brand-mark">清</span>
+      <span class="brand-name">清影 ClearFrame</span>
+    </div>
+    <h2>管理控制台</h2>
+    <p class="sub">登录后可管理接口上下线、计费状态与全站配置</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label>用户名</label>
+        <input class="input" id="loginUser" name="username" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input class="input" id="loginPass" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="loginBtn" style="margin-top:6px">登录</button>
+      <div id="loginErr" style="color:var(--red);font-size:12.5px;margin-top:12px;min-height:18px"></div>
+    </form>
+    <div class="login-tip">
+      <b>怎么登录？</b><br>
+      账号默认 <code>admin</code>。密码是部署时通过环境变量 <code>ADMIN_PASSWORD</code> 设置的；
+      未设置时使用内置默认密码，首次启动的服务端日志里会打印实际密码并提醒修改。<br>
+      登录后请到「账号」页立即修改密码。
+    </div>
+  </div>
+</div>
+
+<div id="adminView" class="admin-shell hidden">
+  <aside class="admin-side">
+    <div class="brand">
+      <span class="brand-mark">清</span>
+      <span class="brand-name" style="font-size:14px">控制台</span>
+    </div>
+    <nav class="admin-nav" id="adminNav">
+      <div class="admin-nav-label">总览</div>
+      <a href="#/overview" data-v="overview" data-i="grid"><span>概览</span></a>
+      <div class="admin-nav-label">内容</div>
+      <a href="#/interfaces" data-v="interfaces" data-i="list"><span>能力管理</span></a>
+      <a href="#/categories" data-v="categories" data-i="folder"><span>分类</span></a>
+      <a href="#/tts" data-v="tts" data-i="audio"><span>音色工坊</span></a>
+      <div class="admin-nav-label">配置</div>
+      <a href="#/settings" data-v="settings" data-i="settings"><span>全局设置</span></a>
+      <a href="#/ads" data-v="ads" data-i="megaphone"><span>广告位</span></a>
+      <a href="#/users" data-v="users" data-i="users"><span>账号</span></a>
+      <a href="#/logs" data-v="logs" data-i="log"><span>访问日志</span></a>
+      <a href="#/data" data-v="data" data-i="db"><span>导入导出</span></a>
+    </nav>
+    <div class="foot" style="display:flex;flex-direction:column;gap:6px">
+      <a href="/" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12.5px;color:var(--text-3)">查看前台</a>
+      <a href="#" id="btnLogout" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12.5px;color:var(--text-3)">退出登录</a>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-top">
+      <h1 id="pageTitle">概览</h1>
+      <span class="sp"></span>
+      <span class="pill" id="whoami"></span>
+      <button class="btn btn-ghost btn-sm" id="btnQuickAdd">新增能力</button>
+    </div>
+    <div class="admin-content" id="adminContent"></div>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<script src="/assets/app.js"></script>
+<script src="/assets/admin.js"></script>
+</body>
+</html>

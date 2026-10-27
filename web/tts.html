@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>音色工坊 · 声音克隆</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header id="header"></header>
+
+<div class="tts-shell">
+  <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+
+    <div>
+      <div class="eyebrow" style="margin-bottom:12px">Voice Studio</div>
+      <h1 style="font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em">音色工坊</h1>
+      <p style="color:var(--text-2);font-size:15px;margin-top:10px;max-width:640px;line-height:1.7">
+        上传或录制一段 10 秒以上的清晰人声，即可复刻这个音色并用任意文本朗读。样本与生成结果都保存在你自己的空间里。
+      </p>
+    </div>
+
+    <!-- 采集 -->
+    <section class="panel">
+      <div class="panel-head">
+        <span style="color:var(--accent)">●</span>
+        <h3>第一步 · 采集音色样本</h3>
+        <span class="sp"></span>
+        <span class="hint" id="limitHint"></span>
+      </div>
+      <div class="panel-body">
+        <div class="tabs" id="srcTabs" style="margin-bottom:16px">
+          <button data-src="upload" class="on">上传音频</button>
+          <button data-src="record">在线录音</button>
+        </div>
+
+        <div id="paneUpload">
+          <div class="dropzone" id="dropzone">
+            <div id="dzIcon"></div>
+            <b>拖入音频文件，或点击选择</b>
+            <span id="dzHint">支持 WAV / MP3，单个不超过 2 MB</span>
+            <input type="file" id="fileInput" accept=".wav,.mp3,audio/wav,audio/mpeg" hidden>
+          </div>
+          <div id="fileInfo" class="hidden" style="margin-top:14px">
+            <div class="selbar" style="margin-bottom:0">
+              <span id="fileName" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+              <span id="fileSize" class="mono" style="color:var(--text-3)"></span>
+              <button class="iconbtn danger" id="fileClear" title="移除">✕</button>
+            </div>
+            <audio id="filePlayer" controls style="width:100%;height:34px;margin-top:10px"></audio>
+          </div>
+        </div>
+
+        <div id="paneRecord" class="hidden">
+          <div class="recorder">
+            <button class="rec-btn" id="recBtn" title="开始/停止录音"></button>
+            <div class="rec-time" id="recTime">00:00</div>
+            <div class="meter"><i id="meterBar"></i></div>
+            <div style="font-size:12.5px;color:var(--text-3);text-align:center;line-height:1.7">
+              点击圆形按钮开始录音，正常音量、距麦 20–30cm。<br>录制完成后会自动转成 44.1kHz 单声道 WAV。
+            </div>
+          </div>
+          <div id="recPreview" class="hidden" style="margin-top:6px">
+            <audio id="recPlayer" controls style="width:100%;height:34px"></audio>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-top:16px;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:220px;margin:0">
+            <label>音色名称</label>
+            <input class="input" id="voiceName" placeholder="例如：我的声音 / 主播小美" maxlength="40">
+          </div>
+          <button class="btn btn-primary" id="btnSaveVoice" disabled>保存到音色库</button>
+        </div>
+        <div id="saveStatus" style="font-size:12.5px;color:var(--text-3);margin-top:10px"></div>
+      </div>
+    </section>
+
+    <!-- 音色库 -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>我的音色</h3>
+        <span class="tag" id="voiceCount">0</span>
+        <span class="sp"></span>
+        <button class="btn btn-quiet btn-sm" id="btnRefreshVoices">刷新</button>
+      </div>
+      <div class="panel-body">
+        <div class="selbar" id="voiceBar">
+          <label class="switchline"><input type="checkbox" id="voiceSelAll"> 全选</label>
+          <span id="voiceSelCount">未选择</span>
+          <span class="sp"></span>
+          <button class="btn btn-ghost btn-xs" id="btnDlVoices" disabled>下载选中</button>
+          <button class="btn btn-danger btn-xs" id="btnDelVoices" disabled>删除选中</button>
+          <button class="btn btn-danger btn-xs" id="btnClearVoices">一键清空</button>
+        </div>
+        <div class="voice-grid" id="voiceGrid"></div>
+      </div>
+    </section>
+
+    <!-- 合成 -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>第二步 · 生成语音</h3>
+        <span class="sp"></span>
+        <span class="hint" id="keyHint"></span>
+      </div>
+      <div class="panel-body">
+        <div class="tabs" id="modeTabs" style="margin-bottom:18px">
+          <button data-mode="clone" class="on">克隆音色</button>
+          <button data-mode="preset">预置音色</button>
+          <button data-mode="design">音色设计</button>
+        </div>
+
+        <div class="field" id="voicePick">
+          <label>选择音色 <span class="req">*</span></label>
+          <select class="select" id="selVoice"></select>
+        </div>
+
+        <div class="field hidden" id="presetPick">
+          <label>预置音色</label>
+          <select class="select" id="selPreset"></select>
+        </div>
+
+        <div class="field hidden" id="designPick">
+          <label>音色描述 <span class="req">*</span></label>
+          <input class="input" id="designHint" placeholder="例如：年轻女性，声音清亮亲切，语速偏快">
+        </div>
+
+        <div class="field">
+          <label>语气风格</label>
+          <div class="style-chips" id="styleChips"></div>
+        </div>
+
+        <div class="field">
+          <label>合成文本 <span class="req">*</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3)" id="charCount">0 / 2000</span>
+          </label>
+          <textarea class="textarea" id="ttsText" style="min-height:120px"
+            placeholder="输入要朗读的文本。支持 (温柔) 这类风格标签，也支持 [笑] 这类音频标签。&#10;勾选下方「按行批量」后，每一行会单独生成一个音频。"></textarea>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:2px;flex-wrap:wrap">
+            <label class="switchline"><input type="checkbox" id="batchMode"> 按行批量生成</label>
+            <span class="field-hint" id="batchHint"></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btnSynth">生成语音</button>
+          <span id="synthStatus" style="font-size:12.5px;color:var(--text-3)"></span>
+        </div>
+
+        <div id="synthResult" class="hidden" style="margin-top:16px">
+          <div class="selbar" style="margin-bottom:10px">
+            <span id="synthMeta" style="flex:1"></span>
+            <a class="btn btn-ghost btn-xs" id="btnDlOne" href="#" download>下载</a>
+          </div>
+          <audio id="synthPlayer" controls style="width:100%;height:38px"></audio>
+        </div>
+      </div>
+    </section>
+
+    <!-- 记录 -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>合成记录</h3>
+        <span class="tag" id="renderCount">0</span>
+        <span class="sp"></span>
+        <button class="btn btn-quiet btn-sm" id="btnRefreshRenders">刷新</button>
+      </div>
+      <div class="panel-body">
+        <div class="selbar">
+          <label class="switchline"><input type="checkbox" id="renderSelAll"> 全选</label>
+          <span id="renderSelCount">未选择</span>
+          <span class="sp"></span>
+          <button class="btn btn-ghost btn-xs" id="btnDlRenders" disabled>批量下载</button>
+          <button class="btn btn-danger btn-xs" id="btnDelRenders" disabled>删除选中</button>
+          <button class="btn btn-danger btn-xs" id="btnClearRenders">一键清空</button>
+        </div>
+        <div class="render-list" id="renderList"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 侧栏 -->
+  <aside style="display:flex;flex-direction:column;gap:14px">
+    <div class="aside-card">
+      <h5>怎么用</h5>
+      <ol style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text-2);line-height:1.9">
+        <li>上传或录制 ≥10 秒干净人声</li>
+        <li>保存后自动进入「我的音色」</li>
+        <li>选择音色 + 输入文本，生成</li>
+        <li>试听满意后勾选批量下载</li>
+      </ol>
+    </div>
+    <div class="aside-card">
+      <h5>当前配置</h5>
+      <div class="kv"><span>样本上限</span><b id="cfgMax">2 MB</b></div>
+      <div class="kv"><span>文本上限</span><b id="cfgChars">2000 字</b></div>
+      <div class="kv"><span>服务密钥</span><b id="cfgKey">—</b></div>
+      <div class="kv"><span>使用模式</span><b id="cfgGuest">—</b></div>
+    </div>
+    <div class="aside-card">
+      <h5>录音建议</h5>
+      <p style="font-size:12.5px;color:var(--text-2);line-height:1.75;margin:0">
+        安静环境、单人说话、不要有背景音乐。样本越干净，复刻的相似度越高。2 MB 的 WAV 约 23 秒，MP3 约 2 分钟。
+      </p>
+    </div>
+    <div class="ad-slot" data-ad="sidebar" style="padding:0"></div>
+  </aside>
+</div>
+
+<footer id="footer"></footer>
+<script src="/assets/app.js"></script>
+<script src="/assets/tts.js"></script>
+</body>
+</html>

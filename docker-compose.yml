@@ -1,0 +1,51 @@
+services:
+  clearframe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: clearframe:latest
+    container_name: clearframe
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-8080}:8080"
+
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      PORT: "8080"
+      DATA_DIR: /app/data
+      # 首次启动时用于创建管理员；创建后修改此处不会影响已有账号
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # 部署在 Nginx / CDN 之后时设为 1，才会信任 X-Forwarded-For
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+
+    volumes:
+      # 命名卷：开箱即用，权限自动匹配镜像内的 app 用户（uid 10001）
+      - clearframe-data:/app/data
+      # 如需直接挂载宿主机目录，改用下面这行，并先执行：
+      #   mkdir -p ./data && sudo chown -R 10001:10001 ./data
+      # - ./data:/app/data
+
+    # 加固：只读根文件系统 + 禁止提权
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/public/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  clearframe-data:

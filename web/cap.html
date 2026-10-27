@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>能力 · 清影 ClearFrame</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header id="header"></header>
+
+<main class="cap-main">
+  <div class="wrap">
+    <div class="crumb">
+      <a href="/">首页</a><span>/</span><a href="/#capabilities">能力清单</a><span>/</span><b id="crumbName">…</b>
+    </div>
+
+    <div class="cap-hero" id="capHero">
+      <span class="cap-ico-lg" id="capIco"></span>
+      <div class="cap-hero-text">
+        <h1 id="capTitle">加载中…</h1>
+        <p id="capSummary"></p>
+        <div class="result-tags" id="capTags"></div>
+      </div>
+    </div>
+
+    <div class="cap-layout">
+      <section class="cap-form-card">
+        <div class="cap-form-head">
+          <h3>填写参数</h3>
+          <span class="pill" id="capKind">能力</span>
+        </div>
+        <form id="capForm" autocomplete="off"></form>
+        <div class="cap-actions">
+          <button class="btn btn-primary" id="capRun" type="button">开始执行</button>
+          <button class="btn btn-ghost" id="capReset" type="button">重置</button>
+          <span class="cap-quota" id="capQuota"></span>
+        </div>
+        <div id="capStatus"></div>
+      </section>
+
+      <aside class="cap-side">
+        <h3>能力说明</h3>
+        <div class="cap-desc" id="capDesc"></div>
+      </aside>
+    </div>
+
+    <div id="capResult" class="result-wrap"></div>
+
+    <div class="cap-disclaimer">
+      <b>提示</b>　本能力由第三方平台提供，解析结果仅供个人学习与研究使用，请勿用于任何商业用途，由此产生的后果由使用者自行承担。
+    </div>
+  </div>
+</main>
+
+<footer id="footer"></footer>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script src="/assets/app.js"></script>
+<script src="/assets/render.js"></script>
+<script src="/assets/fx.js"></script>
+<script src="/assets/cap.js"></script>
+</body>
+</html>

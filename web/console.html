@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个人中心 · 清影 ClearFrame</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header id="header"></header>
+
+<div class="tts-shell" id="shell">
+  <div class="tts-main" style="display:flex;flex-direction:column;gap:18px;min-width:0">
+
+    <div>
+      <div class="eyebrow" style="margin-bottom:12px">Account</div>
+      <h1 style="font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em">个人中心</h1>
+      <p style="color:var(--text-2);font-size:15px;margin-top:10px;max-width:640px;line-height:1.7">
+        账号信息、调用额度与密钥管理。密钥只在创建时显示一次，请立即保存。
+      </p>
+    </div>
+
+    <div id="loginBox" class="hidden">
+      <section class="panel">
+        <div class="panel-body">
+          <div style="max-width:380px;margin:0 auto;padding:16px 0">
+            <h3 id="formTitle" style="font-size:17px;margin-bottom:6px">登录</h3>
+            <p id="modeHint" style="font-size:13px;color:var(--text-3);margin-bottom:20px">还没有账号？<a href="#" id="toRegister" style="color:var(--accent)">立即注册</a></p>
+            <div class="field">
+              <label>用户名</label>
+              <input class="input" id="lgUser" autocomplete="username" placeholder="3-32 位字母、数字、下划线或短横线">
+            </div>
+            <div class="field">
+              <label>密码</label>
+              <input class="input" id="lgPass" type="password" autocomplete="current-password" placeholder="请输入密码">
+            </div>
+            <div class="field hidden" id="confirmField">
+              <label>确认密码</label>
+              <input class="input" id="lgPass2" type="password" autocomplete="new-password" placeholder="再输入一遍密码">
+            </div>
+            <button class="btn btn-primary" id="btnLogin" style="width:100%;justify-content:center">登录</button>
+            <div id="lgMsg" style="font-size:12.5px;color:var(--red);margin-top:12px;min-height:18px"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="main" class="hidden" style="display:flex;flex-direction:column;gap:18px;min-width:0">
+
+      <!-- 账号信息 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span style="color:var(--accent)">●</span>
+          <h3>账号信息</h3>
+          <span class="sp"></span>
+          <span class="tag" id="accRole"></span>
+        </div>
+        <div class="panel-body">
+          <div class="acc-grid">
+            <div class="acc-item"><span class="acc-k">用户名</span><span class="acc-v" id="accName">—</span></div>
+            <div class="acc-item"><span class="acc-k">注册时间</span><span class="acc-v" id="accCreated">—</span></div>
+            <div class="acc-item"><span class="acc-k">今日调用</span><span class="acc-v" id="accToday">—</span></div>
+            <div class="acc-item"><span class="acc-k">累计调用</span><span class="acc-v" id="accTotal">—</span></div>
+          </div>
+
+          <details class="acc-pass" id="acc-pass">
+            <summary>修改密码</summary>
+            <div style="display:grid;gap:12px;margin-top:14px;max-width:420px">
+              <div class="field">
+                <label>原密码</label>
+                <input class="input" id="pwOld" type="password" autocomplete="current-password">
+              </div>
+              <div class="field">
+                <label>新密码（至少 8 位）</label>
+                <input class="input" id="pwNew" type="password" autocomplete="new-password">
+              </div>
+              <div class="field">
+                <label>确认新密码</label>
+                <input class="input" id="pwNew2" type="password" autocomplete="new-password">
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <button class="btn btn-primary btn-sm" id="btnChangePass">保存新密码</button>
+                <span id="pwMsg" style="font-size:12px;color:var(--text-3)"></span>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 接入信息（开发者自用，默认折叠） -->
+      <details class="panel acc-dev">
+        <summary class="panel-head" style="cursor:pointer;list-style:none">
+          <span style="color:var(--accent)">●</span>
+          <h3>接入信息（开发者）</h3>
+          <span class="sp"></span>
+          <span class="hint">展开查看 Base URL 与调用示例</span>
+        </summary>
+        <div class="panel-body">
+          <div class="field">
+            <label>Base URL</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input class="input mono" id="baseUrl" readonly style="flex:1;min-width:220px">
+              <button class="btn btn-ghost" id="copyBase">复制</button>
+            </div>
+          </div>
+          <div class="codeblock" style="margin-top:4px">
+            <div class="codeblock-head">
+              <span style="padding:0 8px;font-size:12px;color:var(--text-3)">Python · openai SDK</span>
+              <span class="sp"></span>
+              <button class="cp" id="copyPy">复制</button>
+            </div>
+            <pre id="pyCode"></pre>
+          </div>
+        </div>
+      </details>
+
+      <!-- 密钥 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span style="color:var(--accent)">●</span>
+          <h3>我的密钥</h3>
+          <span class="sp"></span>
+          <button class="btn btn-primary btn-sm" id="btnNewKey">新建密钥</button>
+        </div>
+        <div class="panel-body">
+          <div id="keyList"></div>
+        </div>
+      </section>
+
+      <!-- 用量 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span style="color:var(--accent)">●</span>
+          <h3>调用用量</h3>
+          <span class="sp"></span>
+          <span class="hint" id="usageHint"></span>
+        </div>
+        <div class="panel-body">
+          <div class="stat-grid" id="usageStats" style="margin-bottom:18px"></div>
+          <div id="chart" style="display:flex;align-items:flex-end;gap:6px;height:90px;padding:0 2px"></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-top:6px" id="chartAxis"></div>
+        </div>
+      </section>
+
+      <!-- 记录 -->
+      <section class="panel">
+        <div class="panel-head">
+          <span style="color:var(--accent)">●</span>
+          <h3>调用记录</h3>
+          <span class="sp"></span>
+          <button class="btn btn-ghost btn-sm" id="btnRefresh">刷新</button>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <div id="usageList"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <aside class="tts-side" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <section class="panel">
+      <div class="panel-head"><h3 style="font-size:13.5px">说明</h3></div>
+      <div class="panel-body" style="padding:14px 16px">
+        <p style="font-size:12.5px;color:var(--text-2);line-height:1.8;margin:0">
+          游客每天有免费解析次数；登录后的账号额度由管理员分配。
+          「我的密钥」用于程序化调用，日常在首页粘贴链接解析不需要密钥。
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h3 style="font-size:13.5px">安全提示</h3></div>
+      <div class="panel-body" style="padding:14px 16px">
+        <p style="font-size:12.5px;color:var(--text-2);line-height:1.8;margin:0">
+          密钥等同于账号密码，请勿写进前端代码或提交到 Git。怀疑泄露时立即在此禁用并重建。
+        </p>
+      </div>
+    </section>
+
+    <div id="adSidebar"></div>
+  </aside>
+</div>
+
+<footer id="footer"></footer>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script src="/assets/app.js"></script>
+<script src="/assets/console.js"></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>清影 ClearFrame · 短视频去水印解析</title>
+<meta name="description" content="粘贴链接即可解析抖音、快手、B站、视频号等 30+ 平台的短视频与图集，无水印、原画质。个人学习用途。">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header id="header"></header>
+<div id="announce"></div>
+
+<main>
+  <!-- 解析区 -->
+  <section class="hero tool-hero" id="top">
+    <div class="fx-orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="fx-grid" aria-hidden="true"></div>
+    <div class="tool-wrap">
+      <div class="eyebrow" data-reveal>Watermark Remover</div>
+      <h1 data-reveal>粘贴链接，<em>原画直出</em></h1>
+      <p class="hero-sub" id="heroSub" data-reveal>支持抖音、快手、B站、视频号等 30+ 平台，无水印、免安装。</p>
+
+      <div class="parse-box" data-reveal>
+        <input id="urlInput" type="text" autocomplete="off" spellcheck="false"
+               placeholder="粘贴分享链接，例如 https://v.douyin.com/xxxxxx/">
+        <button class="btn btn-primary" id="btnParse"><span id="btnParseText">立即解析</span></button>
+      </div>
+
+      <div class="parse-meta" data-reveal>
+        <div class="platform-chips" id="platformChips"></div>
+        <div class="parse-quota" id="parseQuota"></div>
+      </div>
+
+      <div id="parseStatus"></div>
+    </div>
+  </section>
+
+  <!-- 结果 -->
+  <section id="resultWrap" class="result-wrap"></section>
+
+  <!-- 数字条 -->
+  <section class="stats-strip">
+    <div class="wrap stats-inner">
+      <div class="stat" data-reveal>
+        <div class="stat-val"><span data-count="30">0</span><span class="stat-suffix">+</span></div>
+        <div class="stat-label">覆盖平台</div>
+      </div>
+      <div class="stat" data-reveal>
+        <div class="stat-val" id="capCount">—</div>
+        <div class="stat-label">可用能力</div>
+      </div>
+      <div class="stat" data-reveal>
+        <div class="stat-val">&lt;1<span class="stat-suffix">s</span></div>
+        <div class="stat-label">平均响应</div>
+      </div>
+      <div class="stat" data-reveal>
+        <div class="stat-val">0</div>
+        <div class="stat-label">水印残留</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 能力 -->
+  <section class="section" id="capabilities">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Capabilities</div>
+          <h2>能力清单</h2>
+          <p>点开任意一张卡片，就能单独使用这项能力。</p>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="#top">回到解析框</a>
+      </div>
+      <div id="capGrid" class="cap-wrap"></div>
+    </div>
+  </section>
+
+  <!-- 免责声明 -->
+  <section class="section" id="about">
+    <div class="wrap">
+      <div class="notice-card" data-reveal>
+        <div class="notice-head">
+          <span class="notice-ico">!</span>
+          <h3>使用须知与免责声明</h3>
+        </div>
+        <p class="notice-lead">
+          本站是一个个人自用的技术演示项目。部分能力来自第三方开放平台，本站只做接口聚合与前端呈现，
+          <b>不存储、不转售、不代理任何作品内容</b>。
+        </p>
+        <ul class="notice-list">
+          <li><b>版权归属</b>　解析结果的一切权利归原作者与原始发布平台所有，请在获得权利人授权后使用；转载或二次创作请注明来源。</li>
+          <li><b>使用范围</b>　本站仅供个人学习、研究与技术交流，<b>严禁用于任何商业用途</b>，包括但不限于付费下载、内容搬运、批量采集、二次售卖。</li>
+          <li><b>风险自担</b>　因使用本站产生的版权纠纷、平台处罚、法律责任或经济损失，由使用者自行承担，本站及开发者不承担任何连带责任。</li>
+          <li><b>链接时效</b>　本站不存储视频文件，解析地址由第三方平台实时生成，可能随时失效。</li>
+          <li><b>侵权处理</b>　若相关平台或权利人认为本站内容侵犯其合法权益，请与我们联系，核实后我们将第一时间下线处理。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="footer"></footer>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script src="/assets/app.js"></script>
+<script src="/assets/render.js"></script>
+<script src="/assets/fx.js"></script>
+<script src="/assets/home.js"></script>
+</body>
+</html>

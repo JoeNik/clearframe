@@ -1,0 +1,13 @@
+data/
+.git/
+.gitignore
+*.md
+.env
+.env.local
+*.exe
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+.vscode/
+.idea/
