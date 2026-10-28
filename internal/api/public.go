@@ -204,7 +204,7 @@ func (s *Server) handlePlayground(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "bad_request", "无法构造上游请求")
 		return
 	}
-	upReq.Header.Set("User-Agent", "BugPk-Playground/1.0")
+	upReq.Header.Set("User-Agent", "ClearFrame/1.0")
 	if body != "" {
 		upReq.Header.Set("Content-Type", "application/json")
 	}
