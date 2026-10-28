@@ -7,7 +7,11 @@ func (s *Store) seed() error {
 	if err := s.seedAds(); err != nil {
 		return err
 	}
-	return s.seedInterfaces()
+	if err := s.seedInterfaces(); err != nil {
+		return err
+	}
+	// 本站自实现的能力不走上游同步，老库升级后单独补种（只补缺，不覆盖管理员已有的修改）
+	return s.seedLocalInterfaces()
 }
 
 func (s *Store) seedCategories() error {
@@ -236,7 +240,46 @@ func (s *Store) seedInterfaces() error {
 			Tags: []string{"去水印", "精选", "热门", "免费"}, Sort: 140,
 		},
 	}
+	list = append(list, dyzzInterface())
 	for _, it := range list {
+		if _, err := s.SaveInterface(it); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// dyzzInterface 本站自实现的本地能力：「抖音作者作品分析」。
+// 不依赖上游接口市场，走旁挂的抖音数据服务，升级老库时由 seedLocalInterfaces 补种。
+func dyzzInterface() Interface {
+	return Interface{
+		Slug: "dyzz", Name: "抖音作者作品分析", Category: "data",
+		Method: "GET", Path: "/v1/dyzz", UpstreamPath: "/v1/dyzz",
+		Summary: "粘贴作者主页链接，自动拉取全部作品并逐条统计点赞/评论/分享/收藏",
+		Description: "输入作者主页链接（App 内分享主页复制）或分享文案，本站自动解析作者标识并翻页拉取其公开作品列表，每条作品带点赞、评论、分享、收藏数据与作品链接，并输出汇总指标，免去逐个复制作品链接。\n\n由本站直连旁挂的抖音数据服务（Douyin_TikTok_Download_API）实现，不经上游转发。limit 为最多拉取条数（默认 50，上限 200）。\n\n数据口径：抖音 web 通道不提供真实播放量，本能力只统计点赞/评论/分享/收藏；单作品的播放量与 30 天逐日趋势请用「抖音作品统计」对单个作品查询。若数据服务临时被平台风控，稍后重试即可。",
+		Params: []Param{
+			p("url", "string", true, "", "作者主页链接、主页分享文案或 sec_uid；注意不是单条作品链接"),
+			p("limit", "int", false, "50", "最多拉取的作品条数，默认 50，上限 200"),
+		},
+		BodyExample: "url=https://v.douyin.com/xxxxxx/&limit=50",
+		ResponseExample: "{\n  \"code\": 200,\n  \"msg\": \"查询成功\",\n  \"data\": {\n    \"sec_uid\": \"MS4wLjABAAAA...\",\n    \"author\": {\n      \"sec_uid\": \"MS4wLjABAAAA...\",\n      \"nickname\": \"示例作者\",\n      \"avatar\": \"https://...\",\n      \"signature\": \"...\",\n      \"follower_count\": 104385,\n      \"aweme_count\": 320,\n      \"total_favorited\": 1234567\n    },\n    \"videos\": [\n      {\n        \"aweme_id\": \"7587074832588655881\",\n        \"title\": \"示例作品标题\",\n        \"desc\": \"示例作品描述\",\n        \"kind\": \"video\",\n        \"url\": \"https://www.douyin.com/video/7587074832588655881\",\n        \"cover\": \"https://...\",\n        \"create_time\": 1769089903,\n        \"duration\": 15,\n        \"stats\": {\n          \"digg_count\": 2099,\n          \"comment_count\": 32,\n          \"share_count\": 81,\n          \"collect_count\": 259\n        }\n      }\n    ],\n    \"summary\": {\n      \"video_count\": 50,\n      \"total_digg\": 58231,\n      \"total_comment\": 1204,\n      \"total_share\": 903,\n      \"total_collect\": 4102,\n      \"avg_digg\": 1164,\n      \"latest_time\": 1769089903,\n      \"earliest_time\": 1735660800,\n      \"top_aweme_id\": \"7587074832588655881\",\n      \"top_title\": \"示例作品标题\",\n      \"top_digg\": 2099,\n      \"pages\": 3,\n      \"truncated\": false\n    },\n    \"source\": \"v4\"\n  }\n}",
+		PricingMode: "free", Price: 0.0, PriceUnit: "次",
+		RequiresLogin: false, Status: "online", LatencyMs: 0, Popularity: 0,
+		Tags: []string{"数据分析", "批量"}, Sort: 105,
+	}
+}
+
+// seedLocalInterfaces 老库升级补种：只补缺失的本地能力，不覆盖已有配置
+func (s *Store) seedLocalInterfaces() error {
+	local := []Interface{dyzzInterface()}
+	for _, it := range local {
+		var n int
+		if err := s.db.QueryRow(`SELECT COUNT(1) FROM interfaces WHERE slug = ?`, it.Slug).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 {
+			continue
+		}
 		if _, err := s.SaveInterface(it); err != nil {
 			return err
 		}

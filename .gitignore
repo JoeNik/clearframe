@@ -27,3 +27,12 @@ tmp_*
 .vscode/
 .DS_Store
 Thumbs.db
+
+# 本地演示环境
+/clearframe.exe
+/.demo-data/
+/.demo_mock.py
+/.demo-logs/
+
+# 抖音旁挂服务：真实 Cookie 配置不入库
+douyin-api/config.yaml

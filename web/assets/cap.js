@@ -11,7 +11,7 @@
     dyjx: 'video', svparse: 'grid', wxsph: 'video', zjyh: 'video',
     jimeng: 'video', doubao: 'video', ksjx: 'video', bilibili: 'video',
     dydj: 'play', dytj: 'gauge', bbhj: 'users', dola: 'video',
-    pipigx: 'video', domailcx: 'link'
+    pipigx: 'video', domailcx: 'link', dyzz: 'users'
   };
 
   // 上游访问密钥由服务端注入，前台不展示

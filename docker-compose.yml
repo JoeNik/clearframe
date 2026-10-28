@@ -14,18 +14,25 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
       PORT: "8080"
       DATA_DIR: /app/data
+      # 日志目录（stdout 之外额外双写轮转文件 clearframe.log，10MB×5）
+      LOG_DIR: /app/logs
       # 首次启动时用于创建管理员；创建后修改此处不会影响已有账号
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # 部署在 Nginx / CDN 之后时设为 1，才会信任 X-Forwarded-For
       TRUST_PROXY: ${TRUST_PROXY:-0}
+      # 「抖音作者作品分析」旁挂数据服务（同网络内容器名）；也可在后台「全局设置」里改
+      DOUYIN_SIDECAR: ${DOUYIN_SIDECAR:-http://douyin-api:80}
 
     volumes:
-      # 命名卷：开箱即用，权限自动匹配镜像内的 app 用户（uid 10001）
-      - clearframe-data:/app/data
-      # 如需直接挂载宿主机目录，改用下面这行，并先执行：
-      #   mkdir -p ./data && sudo chown -R 10001:10001 ./data
-      # - ./data:/app/data
+      # 数据（SQLite + 音色）与日志都映射到宿主机磁盘，便于备份与排查。
+      # 首次启动前执行：mkdir -p ./data ./logs && sudo chown -R 10001:10001 ./data ./logs
+      # （容器内以 uid 10001 非 root 运行）
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    depends_on:
+      - douyin-api
 
     # 加固：只读根文件系统 + 禁止提权
     read_only: true
@@ -47,5 +54,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
-volumes:
-  clearframe-data:
+  # 抖音数据服务：旁挂开源项目 Douyin_TikTok_Download_API（v4 单容器形态），
+  # 供「抖音作者作品分析」拉取作者主页作品列表。
+  # 不发布端口，只在 compose 网络内可达。
+  # 挂载说明见 douyin-api/README.md（Cookie 配置 + msToken 补丁）。
+  douyin-api:
+    image: evil0ctal/douyin_tiktok_download_api:V4.1.2
+    container_name: douyin-api
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      # 宿主机可编辑的抓取配置（Cookie 更新入口）
+      - ./douyin-api/config.yaml:/app/crawlers/douyin/web/config.yaml:ro
+      # msToken 补丁：官方代码把请求 msToken 置空导致作品列表 403
+      - ./douyin-api/web_crawler.py:/app/crawlers/douyin/web/web_crawler.py:ro
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1/docs', timeout=5)"]
+      interval: 60s
+      timeout: 8s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

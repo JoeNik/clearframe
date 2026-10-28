@@ -62,6 +62,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /cap/{slug}", s.page("cap.html"))
 	m.HandleFunc("GET /interface/{slug}", s.redirectTo("/cap/{slug}"))
 	m.HandleFunc("GET /console", s.page("console.html"))
+	m.HandleFunc("GET /authors", s.page("authors.html"))
 	m.HandleFunc("GET /tts", s.page("tts.html"))
 	m.HandleFunc("GET /admin", s.page("admin.html"))
 	m.HandleFunc("GET /admin/{rest...}", s.page("admin.html"))
@@ -91,6 +92,14 @@ func (s *Server) routes() {
 	m.HandleFunc("PATCH /api/keys/{id}", login(s.handleUpdateKey))
 	m.HandleFunc("DELETE /api/keys/{id}", login(s.handleDeleteKey))
 	m.HandleFunc("GET /api/usage", login(s.handleMyUsage))
+
+	// ---- 我的作者（抖音关注与作品快照，登录用户）----
+	m.HandleFunc("GET /api/dy/authors", s.requireLogin(s.handleDyAuthorList))
+	m.HandleFunc("POST /api/dy/authors", s.requireLogin(s.handleDyAuthorAdd))
+	m.HandleFunc("DELETE /api/dy/authors/{id}", s.requireLogin(s.handleDyAuthorDelete))
+	m.HandleFunc("POST /api/dy/authors/{id}/refresh", s.requireLogin(s.handleDyAuthorRefresh))
+	m.HandleFunc("GET /api/dy/authors/{id}/videos", s.requireLogin(s.handleDyAuthorVideos))
+	m.HandleFunc("POST /api/dy/authors/{id}/stats", s.requireLogin(s.handleDyAuthorStats))
 
 	// ---- 音色工坊 ----
 	m.HandleFunc("GET /api/tts/config", s.handleTTSConfig)

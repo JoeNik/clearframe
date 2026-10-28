@@ -189,6 +189,24 @@ func (s *Server) handleGateway(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Guest-Remaining", strconv.Itoa(s.guest.remaining(s.clientIP(r), cfg.GuestDailyQuota)))
 	}
 
+	// 2.5 本地能力：由本站直接实现、不走上游转发（如抖音作者作品分析）。
+	//     鉴权 / 限流 / 游客额度与转发能力完全一致，计量也走同一张用量表。
+	if h := s.localCapability(it.Slug); h != nil {
+		status := h(w, r)
+		if key.ID > 0 {
+			s.st.TouchAPIKey(key.ID)
+		}
+		s.st.IncrCounter("calls_total", 1)
+		s.st.IncrCounter("calls:"+time.Now().Format("2006-01-02"), 1)
+		s.st.IncrCounter("gw:"+it.Slug, 1)
+		s.st.RecordUsage(store.Usage{
+			KeyID: key.ID, UserID: key.UserID, Username: key.Username, Slug: it.Slug,
+			Path: path, Method: r.Method, Status: status,
+			Ms: time.Since(start).Milliseconds(), IP: s.clientIP(r), Stream: false,
+		})
+		return
+	}
+
 	// 3. 组装上游地址：接口单独配置优先，否则按"去掉 /v1 前缀 + 上游前缀"推导
 	upPath := it.UpstreamPath
 	if upPath == "" {
@@ -385,6 +403,17 @@ func (s *Server) handleGateway(w http.ResponseWriter, r *http.Request) {
 		Path: path, Method: r.Method, Status: resp.StatusCode,
 		Ms: time.Since(start).Milliseconds(), IP: s.clientIP(r), Stream: stream,
 	})
+}
+
+// localCapability 本地能力注册表：slug → 处理函数。
+// 命中后网关跳过上游转发，由本站自行实现并返回状态码供计量。
+func (s *Server) localCapability(slug string) func(w http.ResponseWriter, r *http.Request) int {
+	switch slug {
+	case "dyzz":
+		return s.handleDyzz
+	default:
+		return nil
+	}
 }
 
 // upstreamTransport 访问上游专用：显式禁用环境代理，

@@ -176,6 +176,10 @@ type Settings struct {
 	UpstreamKey     string    `json:"upstreamKey"`
 	UpstreamAuthHdr string    `json:"upstreamAuthHeader"`
 	UpstreamAuthPfx string    `json:"upstreamAuthPrefix"`
+	// 抖音数据服务（旁挂 Douyin_TikTok_Download_API）：
+	// 「抖音作者作品分析」不走上游转发，由本站直连这个旁挂服务翻页聚合
+	DouyinSidecar    string `json:"douyinSidecar"`
+	DouyinSidecarKey string `json:"douyinSidecarKey"`
 	GatewayEnabled  bool      `json:"gatewayEnabled"`
 	PublicBase      string    `json:"publicBase"`
 	DefaultQuota    int       `json:"defaultQuota"`

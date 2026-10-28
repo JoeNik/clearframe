@@ -2,7 +2,7 @@
    供首页解析与能力页共用。window.RENDER.show(el, data, opts) 一把梭。 */
 (function () {
   'use strict';
-  const { esc, icon, copy, toast, bytes } = window.UI;
+  const { esc, icon, copy, toast, bytes, api } = window.UI;
 
   // ---------- 数值 ----------
   function num(n) {
@@ -230,7 +230,8 @@
     setActive(onTab ? onTab.getAttribute('data-k') : 'play_count');
 
     if (!svg || !tip) return;
-    svg.addEventListener('mousemove', function (ev) {
+    // pointer 事件同时覆盖鼠标与触摸（配合 CSS touch-action: pan-y，横向拖动刷选、纵向照常滚动）
+    const onPoint = function (ev) {
       const r = svg.getBoundingClientRect();
       const vx = (ev.clientX - r.left) / r.width * TW;
       let i = Math.round((vx - TPL) / TIW * (n - 1));
@@ -245,8 +246,14 @@
       tip.classList.add('on');
       const px = (cx / TW) * r.width;
       tip.style.left = Math.min(Math.max(px, 78), r.width - 78) + 'px';
+    };
+    svg.addEventListener('pointermove', onPoint);
+    svg.addEventListener('pointerdown', onPoint);
+    svg.addEventListener('pointerleave', function () {
+      tip.classList.remove('on');
+      if (cur) { cur.setAttribute('x1', -10); cur.setAttribute('x2', -10); }
     });
-    svg.addEventListener('mouseleave', function () {
+    svg.addEventListener('pointercancel', function () {
       tip.classList.remove('on');
       if (cur) { cur.setAttribute('x1', -10); cur.setAttribute('x2', -10); }
     });
@@ -382,6 +389,216 @@
     return html;
   }
 
+  // ---------- 作者作品分析 ----------
+  function dyDate(ts) {
+    const n = Number(ts);
+    if (!n) return '—';
+    const d = new Date(n * 1000);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function dyInsights(videos, sum) {
+    const out = [];
+    if (sum.video_count) {
+      out.push('共拉取 ' + num(sum.video_count) + ' 条作品' +
+        (sum.pages ? '（' + sum.pages + ' 页）' : '') +
+        (sum.truncated ? '，已达本次上限' : '，已取完全部公开作品'));
+    }
+    if (sum.top_digg > 0) {
+      out.push('表现最好的作品「' + (sum.top_title || sum.top_aweme_id || '').slice(0, 40) + '」，单条点赞 ' + num(sum.top_digg));
+    }
+    if (sum.latest_time) {
+      out.push('最近一次发布 ' + dyDate(sum.latest_time) +
+        (sum.earliest_time ? '，列表覆盖 ' + dyDate(sum.earliest_time) + ' 至今' : ''));
+    }
+    const monthAgo = Math.floor(Date.now() / 1000) - 30 * 86400;
+    const recent = videos.filter(function (v) { return Number(v.create_time) >= monthAgo; }).length;
+    if (recent > 0) out.push('近 30 天发布 ' + recent + ' 条，平均单条获赞 ' + num(sum.avg_digg));
+    return out;
+  }
+
+  function authorHTML(data) {
+    const au = data.author || {};
+    const videos = Array.isArray(data.videos) ? data.videos : [];
+    const sum = data.summary || {};
+
+    const tags = ['<span class="tag tag-accent">作者作品分析</span>'];
+    if (au.follower_count != null) tags.push('<span class="tag">粉丝 ' + num(au.follower_count) + '</span>');
+    if (au.total_favorited != null) tags.push('<span class="tag">总获赞 ' + num(au.total_favorited) + '</span>');
+    if (au.aweme_count != null) tags.push('<span class="tag">主页作品 ' + num(au.aweme_count) + '</span>');
+    if (data.source) tags.push('<span class="tag mono">通道 ' + esc(data.source) + '</span>');
+
+    const cards = [
+      { k: 'video_count', label: '拉取作品', ico: 'video' },
+      { k: 'total_digg', label: '总点赞', ico: 'bolt' },
+      { k: 'total_comment', label: '总评论', ico: 'chat' },
+      { k: 'total_share', label: '总分享', ico: 'link' },
+      { k: 'total_collect', label: '总收藏', ico: 'check' }
+    ].filter(function (c) { return sum[c.k] != null; });
+
+    const insights = dyInsights(videos, sum);
+
+    const cols = [
+      { k: 'title', label: '作品', align: 'L' },
+      { k: 'create_time', label: '发布时间', align: 'L' },
+      { k: 'duration', label: '时长', align: 'R' },
+      { k: 'digg', label: '点赞', align: 'R' },
+      { k: 'comment', label: '评论', align: 'R' },
+      { k: 'share', label: '分享', align: 'R' },
+      { k: 'collect', label: '收藏', align: 'R' },
+      { k: 'act', label: '操作', align: 'R', noSort: true }
+    ];
+    let html = '<div class="result-card stats-card">' +
+      '<div class="result-head">' +
+        '<div class="result-author" style="margin:0">' +
+          (au.avatar ? '<img class="avatar" src="' + esc(au.avatar) + '" alt="" referrerpolicy="no-referrer">' : '<span class="avatar ph"></span>') +
+          '<div><div class="an">' + esc(au.nickname || '未知作者') + '</div>' +
+          '<div class="ai mono">' + esc((data.sec_uid || au.sec_uid || '').slice(0, 24)) + '…</div></div>' +
+        '</div>' +
+        '<div class="result-tags">' + tags.join('') + '</div>' +
+      '</div>';
+
+    if (cards.length) {
+      html += '<div class="metric-grid">' + cards.map(function (c) {
+        return '<div class="metric"><span class="metric-ico">' + icon(c.ico, 14) + '</span>' +
+          '<div class="metric-val">' + num(sum[c.k]) + '</div>' +
+          '<div class="metric-label">' + c.label + '</div></div>';
+      }).join('') + '</div>';
+    }
+    if (insights.length) {
+      html += '<div class="insights">' + insights.map(function (t) {
+        return '<div class="ins-row"><span class="ins-dot"></span><span>' + esc(t) + '</span></div>';
+      }).join('') + '</div>';
+    }
+
+    html += '<div class="vt-wrap"><table class="video-table"><thead><tr>' +
+      cols.map(function (c) {
+        return '<th class="' + (c.align === 'L' ? 'vt-l ' : 'vt-r ') + (c.noSort ? '' : 'vt-sort') + '" data-k="' + c.k + '">' +
+          esc(c.label) + '<i class="vt-arrow"></i></th>';
+      }).join('') + '</tr></thead><tbody class="vt-body"></tbody></table></div>';
+
+    html += '<div class="vt-actions">' +
+      '<button class="btn btn-primary btn-sm" data-act="dy-follow">' + icon('check', 13) +
+        ' 关注此作者并保存数据</button>' +
+      '<button class="btn btn-ghost btn-sm" data-act="dy-csv">' + icon('download', 13) + ' 导出 CSV</button>' +
+      '<span class="vt-note">点击表头排序 · 「趋势」查看单作品播放量与 30 天逐日数据 · 关注后可在<a href="/authors">我的作者</a>增量更新</span></div>';
+
+    html += '<div class="gloss">统计口径：抖音网页通道不提供真实播放量，这里汇总点赞 / 评论 / 分享 / 收藏；单作品的播放量、互动率与逐日趋势请点「趋势」用「抖音作品统计」查询 · 数据来自旁挂数据服务，仅供学习研究</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function dyRowCells(v) {
+    const st = v.stats || {};
+    const kindTag = v.kind === 'image' ? '<span class="tag">图集</span>' : '';
+    const topTag = v.is_top ? '<span class="tag tag-accent">置顶</span>' : '';
+    const hideTag = v.is_deleted ? '<span class="tag tag-warn">已删除</span>'
+      : v.is_private ? '<span class="tag tag-warn">私密</span>' : '';
+    return '<td class="vt-l vt-title">' +
+        (v.cover ? '<img class="vt-cover" src="' + esc(v.cover) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '') +
+        '<span class="vt-t" title="' + esc(v.desc || v.title || '') + '">' + esc(v.title || '未命名作品') + '</span>' +
+        topTag + kindTag + hideTag + '</td>' +
+      '<td class="vt-l vt-date">' + dyDate(v.create_time) + '</td>' +
+      '<td class="vt-r">' + (v.duration ? fmtDur(v.duration) : '—') + '</td>' +
+      '<td class="vt-r">' + num(st.digg_count) + '</td>' +
+      '<td class="vt-r">' + num(st.comment_count) + '</td>' +
+      '<td class="vt-r">' + num(st.share_count) + '</td>' +
+      '<td class="vt-r">' + num(st.collect_count) + '</td>' +
+      '<td class="vt-r vt-act">' +
+        '<a class="btn btn-ghost btn-sm" href="/cap/dytj?id=' + encodeURIComponent(v.aweme_id || '') + '">趋势</a>' +
+        (v.url ? '<a class="btn btn-ghost btn-sm" href="' + esc(v.url) + '" target="_blank" rel="noopener">原链</a>' : '') +
+      '</td>';
+  }
+
+  function dySortVal(v, k) {
+    if (k === 'create_time' || k === 'duration') return Number(v[k]) || 0;
+    if (k === 'title') return v.title || '';
+    return Number((v.stats || {})[k + '_count']) || 0;
+  }
+
+  function bindAuthor(el, data) {
+    const videos = (Array.isArray(data.videos) ? data.videos.slice() : []);
+    const body = el.querySelector('.vt-body');
+    if (!body) return;
+    let sortKey = null, sortAsc = false;
+
+    function render() {
+      let rows = videos;
+      if (sortKey) {
+        rows = videos.slice().sort(function (a, b) {
+          const va = dySortVal(a, sortKey), vb = dySortVal(b, sortKey);
+          let c;
+          if (typeof va === 'string') c = va.localeCompare(vb, 'zh-CN');
+          else c = va - vb;
+          return sortAsc ? c : -c;
+        });
+      }
+      body.innerHTML = rows.map(function (v) { return '<tr>' + dyRowCells(v) + '</tr>'; }).join('');
+      el.querySelectorAll('.vt-sort').forEach(function (th) {
+        const arrow = th.querySelector('.vt-arrow');
+        if (!arrow) return;
+        if (th.getAttribute('data-k') === sortKey) {
+          arrow.textContent = sortAsc ? '↑' : '↓';
+          th.classList.add('on');
+        } else {
+          arrow.textContent = '';
+          th.classList.remove('on');
+        }
+      });
+    }
+
+    el.querySelectorAll('.vt-sort').forEach(function (th) {
+      th.addEventListener('click', function () {
+        const k = th.getAttribute('data-k');
+        if (sortKey === k) { if (!sortAsc) sortAsc = true; else { sortKey = null; sortAsc = false; } }
+        else { sortKey = k; sortAsc = false; }
+        render();
+      });
+    });
+    render();
+
+    const followBtn = el.querySelector('[data-act="dy-follow"]');
+    if (followBtn) followBtn.addEventListener('click', async function () {
+      followBtn.disabled = true;
+      try {
+        const r = await api.post('/api/dy/authors', {
+          secUid: data.sec_uid || (data.author || {}).sec_uid || '',
+          author: data.author || {},
+          videos: videos
+        });
+        toast('已关注「' + ((data.author || {}).nickname || '作者') + '」，已保存 ' + r.saved + ' 条作品快照', 'ok');
+        followBtn.innerHTML = icon('check', 13) + ' 已关注';
+      } catch (e) {
+        toast(e.message || '关注失败', 'err');
+        followBtn.disabled = false;
+      }
+    });
+
+    const csvBtn = el.querySelector('[data-act="dy-csv"]');
+    if (csvBtn) csvBtn.addEventListener('click', function () {
+      const head = ['序号', '标题', '发布时间', '类型', '时长(秒)', '点赞', '评论', '分享', '收藏', '作品ID', '链接'];
+      const lines = [head.join(',')];
+      videos.forEach(function (v, i) {
+        const st = v.stats || {};
+        const cells = [i + 1, v.title || '', dyDate(v.create_time), v.kind === 'image' ? '图集' : '视频',
+          v.duration || 0, st.digg_count ?? '', st.comment_count ?? '', st.share_count ?? '',
+          st.collect_count ?? '', v.aweme_id || '', v.url || ''];
+        lines.push(cells.map(function (c) {
+          const s = String(c).replace(/"/g, '""');
+          return /[",\n]/.test(s) ? '"' + s + '"' : s;
+        }).join(','));
+      });
+      const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'douyin-author-' + ((data.author && data.author.nickname) || data.sec_uid || 'export') + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+      toast('已导出 ' + videos.length + ' 条作品数据');
+    });
+  }
+
   // ---------- 通用 ----------
   function genericHTML(data) {
     if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -410,6 +627,8 @@
 
   function detect(data) {
     if (!data || typeof data !== 'object') return 'generic';
+    // 作者作品分析：作者 + 作品列表（放在 stats 之前，避免 author 字段干扰判断）
+    if (data.author && Array.isArray(data.videos)) return 'author';
     // 先判媒体：媒体对象里也可能带 extra.statistics，不能被误判成统计页
     if (data.url || data.cover || (data.images && data.images.length) || data.type) return 'media';
     if (data.extra && (data.extra.statistics || data.extra.statistics_trend)) return 'stats';
@@ -422,12 +641,16 @@
     opts = opts || {};
     const kind = opts.kind || detect(data);
     let html;
-    if (kind === 'stats') html = statsHTML(data);
+    if (kind === 'author') html = authorHTML(data);
+    else if (kind === 'stats') html = statsHTML(data);
     else if (kind === 'media') html = mediaHTML(data, opts);
     else html = genericHTML(data);
 
     el.innerHTML = html;
     el.classList.add('reveal-in');
+
+    // 作者作品分析：绑定表格排序与 CSV 导出
+    if (kind === 'author') bindAuthor(el, data);
 
     // 数据分析卡：绑定趋势图 Tab 切换与悬浮明细
     const t2 = el.querySelector('.trend2');

@@ -643,6 +643,10 @@
       field('鉴权值前缀', input('upstreamAuthPrefix', s.upstreamAuthPrefix, '留空即直接传 Key')) +
       '<div class="full">' + field('上游路径前缀', input('upstreamPrefix', s.upstreamPrefix, '/api'),
         '默认把 /v1/chat/completions 转发到 {上游地址}/api/chat/completions；单个接口可在接口管理里覆盖') + '</div>' +
+      '<div class="full">' + field('抖音数据服务地址', input('douyinSidecar', s.douyinSidecar, 'http://douyin-api:80'),
+        '「抖音作者作品分析」能力依赖旁挂的开源服务 Douyin_TikTok_Download_API；docker compose 部署默认走 http://douyin-api:80，留空则读环境变量 DOUYIN_SIDECAR') + '</div>' +
+      '<div class="full">' + field('抖音数据服务密钥（可选）', input('douyinSidecarKey', s.douyinSidecarKey, '一般留空'),
+        '仅当旁挂服务自己开启了 API Key 鉴权时填写；该服务只部署在内网，不对公网暴露') + '</div>' +
       '<div class="full">' + field('本站对外地址', input('publicBase', s.publicBase, 'https://api.你的域名.com'),
         '用于生成文档里的 base_url 与示例代码，留空自动取当前域名') + '</div>' +
       '</div>' +

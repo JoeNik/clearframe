@@ -212,6 +212,51 @@ CREATE TABLE IF NOT EXISTS usage (
 CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage(ts);
 CREATE INDEX IF NOT EXISTS idx_usage_user ON usage(user_id);
 CREATE INDEX IF NOT EXISTS idx_usage_key ON usage(key_id);
+
+-- 关注的抖音作者：关注关系按用户隔离
+CREATE TABLE IF NOT EXISTS dy_authors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  sec_uid TEXT NOT NULL,
+  nickname TEXT NOT NULL DEFAULT '',
+  avatar TEXT NOT NULL DEFAULT '',
+  signature TEXT NOT NULL DEFAULT '',
+  follower_count INTEGER NOT NULL DEFAULT 0,
+  aweme_count INTEGER NOT NULL DEFAULT 0,
+  last_synced_at INTEGER NOT NULL DEFAULT 0,
+  last_new_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  UNIQUE(user_id, sec_uid)
+);
+CREATE INDEX IF NOT EXISTS idx_dy_authors_user ON dy_authors(user_id);
+
+-- 作品快照：按作者全局共享（公开数据，谁刷新过其他人直接受益），关注关系删除后数据保留
+CREATE TABLE IF NOT EXISTS dy_videos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sec_uid TEXT NOT NULL,
+  aweme_id TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  descr TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'video',
+  url TEXT NOT NULL DEFAULT '',
+  cover TEXT NOT NULL DEFAULT '',
+  create_time INTEGER NOT NULL DEFAULT 0,
+  duration INTEGER NOT NULL DEFAULT 0,
+  is_top INTEGER NOT NULL DEFAULT 0,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  is_private INTEGER NOT NULL DEFAULT 0,
+  digg_count INTEGER NOT NULL DEFAULT 0,
+  comment_count INTEGER NOT NULL DEFAULT 0,
+  share_count INTEGER NOT NULL DEFAULT 0,
+  collect_count INTEGER NOT NULL DEFAULT 0,
+  play_count INTEGER,
+  interact_rate REAL,
+  stats_updated_at INTEGER NOT NULL DEFAULT 0,
+  first_seen_at INTEGER NOT NULL DEFAULT 0,
+  last_seen_at INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(sec_uid, aweme_id)
+);
+CREATE INDEX IF NOT EXISTS idx_dy_videos_sec ON dy_videos(sec_uid, create_time DESC);
 `
 
 func (s *Store) migrate() error {

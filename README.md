@@ -19,8 +19,8 @@
 | 名字 | **清影 ClearFrame**（“清”＝干净无水印，“影”＝影像） |
 | 形态 | 单二进制 + SQLite，前端零构建，`docker compose up -d` 即可上线 |
 | 技术栈 | Go 1.24 · 标准库 `http.ServeMux` · 纯 Go SQLite（`modernc.org/sqlite`，无 CGO） |
-| 页面 | 首页解析工具 · 能力页 `/cap/{slug}` · 音色工坊 `/tts` · 后台 `/admin` |
-| 能力 | 14 项（视频解析 11 · 数据分析 1 · 实用工具 2），可随时从上游同步刷新 |
+| 页面 | 首页解析工具 · 能力页 `/cap/{slug}` · 我的作者 `/authors` · 音色工坊 `/tts` · 后台 `/admin` |
+| 能力 | 15 项（视频解析 11 · 数据分析 2 · 实用工具 2），上游能力可随时同步刷新 |
 
 **它做了什么**
 
@@ -64,7 +64,8 @@ PORT=8080 DATA_DIR=./data ./clearframe
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `PORT` | `8080` | 监听端口 |
-| `DATA_DIR` | `./data` | SQLite 与音色文件存放目录 |
+| `DATA_DIR` | `./data` | SQLite 与音色文件存放目录（Docker 部署映射到宿主机 `./data`） |
+| `LOG_DIR` | `$DATA_DIR/logs` | 文件日志目录（轮转 10MB×5），Docker 部署映射到宿主机 `./logs` |
 | `ADMIN_USER` | `admin` | 首次启动创建的管理员账号 |
 | `ADMIN_PASSWORD` | 内置默认 | 未设置时用内置默认密码（首次启动日志会打印），**首次进入后台会强制要求修改**，公网部署建议直接覆盖 |
 | `TRUST_PROXY` | `0` | 部署在 Nginx / CDN 之后设为 `1`，才会信任 `X-Forwarded-For` |
@@ -83,6 +84,40 @@ PORT=8080 DATA_DIR=./data ./clearframe
 
 > 登录页不显示任何具体密码，避免被扫站的人直接看到；
 > 密码只用于创建第一个管理员，之后再改 `.env` 不会影响已有账号，请走后台修改。
+
+---
+
+## 三点五、抖音作者作品分析（本地能力）
+
+粘贴一个抖音作者的**主页链接**（App 内 作者主页 → 分享 → 复制链接，短链 / 长链 / 分享文案都可以），
+本站自动解析出作者标识，翻页拉取其公开作品（点赞 / 评论 / 分享 / 收藏），输出汇总指标、
+可排序的作品表格与 CSV 导出——免去逐个手动复制作品链接。
+
+- 实现方式：**本站自实现的本地能力**（`/v1/dyzz`），不走上游转发，而是直连旁挂的开源数据服务
+  [Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)（默认 v4 单容器，自动兼容 v5）。
+  docker compose 已把它编排为 `douyin-api` 服务（仅内网可达，不发布端口）。
+- 服务地址可在后台「全局设置 → 上游接入 → 抖音数据服务地址」修改，留空读环境变量 `DOUYIN_SIDECAR`。
+- **没有 mock 数据**：拉取失败就明确失败（502 并带原因），不做任何兜底假数据。
+  数据拉不到时按序排查：① 旁挂服务是否健康（`docker compose ps douyin-api`）；
+  ② 更新 Cookie——编辑宿主机 `douyin-api/config.yaml` 的 `Cookie:` 行，`docker compose restart douyin-api`；
+  ③ 服务器 IP 被抖音风控时只能换 IP。已内置 **msToken 补丁**（官方代码把请求 msToken 置空，
+  现在的抖音对作品列表接口强制校验它，不补丁必得 403，详见 `douyin-api/README.md`）。
+- 数据口径：抖音 web 通道不提供真实播放量，本能力统计点赞 / 评论 / 分享 / 收藏；
+  单作品的播放量与 30 天逐日趋势点表格里的「趋势」跳「抖音作品统计」查询。
+- 稳定性：同一作者的结果有 60 秒缓存，重复点击不会重复打上游。
+
+### 关注作者与作品快照（`/authors`，需登录）
+
+登录后可以把作者**关注**起来（能力页结果底部一键关注，或在「我的作者」页粘贴主页链接）：
+
+- **作品快照落库**：作品链接、标题、发布时间与点赞 / 评论 / 分享 / 收藏存进 SQLite（`dy_videos` 表，
+  按作者全局共享——同一作者任何人刷新过，其他关注者直接读库，不重复爬取）。
+- **增量刷新**：列表页点「增量刷新」只拉新作品（翻页遇到已见过的作品即停，最多 5 页），
+  已知作品的互动数顺带更新，不会每次全量爬取。
+- **多选分批深查**：作品管理视图勾选任意作品 → 「查询已选」→ 前端每批 10 个自动分批、
+  每条间隔 0.4 秒限速，调用「抖音作品统计」把**播放量 / 互动率**写回快照；失败的单独提示可重试。
+  深查走站内端点（登录用户直连上游），不占网关游客额度。
+- 取关只删关注关系，快照数据保留。
 
 ---
 
@@ -122,11 +157,12 @@ PORT=8080 DATA_DIR=./data ./clearframe
 | 视频解析 | Dola 解析 | Dola 作品 |
 | 视频解析 | 皮皮搞笑解析 | 皮皮搞笑 |
 | 数据分析 | 抖音作品统计 | 播放 / 点赞 / 评论 / 分享 / 收藏 + 互动率 + 逐日趋势 |
+| 数据分析 | 抖音作者作品分析 | 粘贴作者主页链接，自动翻页拉取全部作品并逐条统计，免去手动复制链接 |
 | 实用工具 | 宝贝回家 | 公益寻亲信息查询 |
 | 实用工具 | 域名查询 | 域名注册信息与注册商 |
 
-> 「抖音作品统计」是唯一的数据分析类能力：结果页会渲染指标卡、互动率环形图与互动构成条形图；
-> 上游返回逐日趋势时，还会画近 30 天的播放量 / 点赞折线。
+> 「抖音作品统计」渲染指标卡、互动率环形图与互动构成条形图；上游返回逐日趋势时，还会画近 30 天的播放量 / 点赞折线。
+> 「抖音作者作品分析」是本站自实现的本地能力：输出汇总指标 + 可排序作品表格 + CSV 导出，每行可跳「抖音作品统计」看单作品播放量与趋势。
 
 ---
 
@@ -174,7 +210,8 @@ PORT=8080 DATA_DIR=./data ./clearframe
 ├── main.go                  # 启动、管理员初始化、优雅退出
 ├── internal/
 │   ├── api/                 # 路由、网关、公开接口、后台接口、中间件
-│   │   ├── gateway.go       # /v1/* 转发（含密钥注入、流式透传、代理回退）
+│   │   ├── gateway.go       # /v1/* 转发（含密钥注入、流式透传、代理回退、本地能力钩子）
+│   │   ├── dyzz.go          # 本地能力：抖音作者作品分析（短链解析 + 翻页聚合）
 │   │   ├── public.go        # bootstrap / 能力列表 / 能力详情 / 登录
 │   │   ├── admin.go         # 后台：能力、设置、广告、账号、日志
 │   │   └── middleware.go    # 限流、安全头、访问日志
@@ -188,16 +225,20 @@ PORT=8080 DATA_DIR=./data ./clearframe
 │   └── assets/
 │       ├── app.css          # 设计系统（暗色 + 酸性柠檬绿）
 │       ├── app.js           # 公共：请求、图标、顶栏页脚、Toast
-│       ├── render.js        # 结果渲染：媒体 / 数据分析 / 通用 JSON
+│       ├── render.js        # 结果渲染：媒体 / 数据分析 / 作者作品 / 通用 JSON
 │       ├── fx.js            # 动效：入场、计数、聚光、视差
 │       ├── home.js / cap.js / tts.js / admin.js
-├── Dockerfile / docker-compose.yml
+├── Dockerfile / docker-compose.yml（含旁挂 douyin-api 数据服务）
 └── README.md
 ```
 
 ---
 
 ## 十、常见问题
+
+**Q：作者作品分析里为什么没有播放量？**
+抖音网页通道不返回真实播放量（恒为 0 占位），所以列表能力只统计点赞 / 评论 / 分享 / 收藏；
+要看播放量和 30 天逐日趋势，点表格里的「趋势」对单作品用「抖音作品统计」查询。
 
 **Q：解析报「上游响应超时 / 上游拒绝连接」？**
 先到后台「测试连通性」。上游本身偶发不稳定；本站已做「直连失败自动走系统代理重试一次」，
@@ -215,12 +256,37 @@ PORT=8080 DATA_DIR=./data ./clearframe
 
 ---
 
-## 十一、备份与更新
+## 十一、日志、监控与备份
+
+### 日志在哪
+
+| 位置 | 内容 |
+|---|---|
+| 宿主机 `./logs/clearframe.log` | 全量运行日志（每请求一行：方法 路径 状态码 耗时 IP；panic 带 **完整堆栈**；轮转 10MB×5） |
+| `docker compose logs -f clearframe` | 同样内容（stdout 被 json-file 采集，10MB×3） |
+| SQLite `logs` 表 | /v1 与 /api 的调用明细（后台「日志」页可查） |
+
+异常退出由两层兜底：容器 `restart: unless-stopped` 自动拉起 + healthcheck 探活；
+进程内的 panic 会被恢复中间件捕获并**连堆栈写进日志**，不会静默消失。
+
+### 数据与日志都在宿主机磁盘
+
+```text
+./data/   SQLite（app.db）+ 音色文件   ← 挂载到 /app/data
+./logs/   clearframe.log 轮转日志      ← 挂载到 /app/logs
+./douyin-api/   旁挂服务的 Cookie 配置与 msToken 补丁（宿主机可直接编辑）
+```
+
+首次启动前：`mkdir -p ./data ./logs && sudo chown -R 10001:10001 ./data ./logs`（容器以 uid 10001 运行）。
+
+> 从旧版本（命名卷）升级：数据还在 `clearframe-data` 卷里，执行
+> `docker run --rm -v clearframe-data:/from -v "$PWD/data":/to alpine cp -a /from/. /to/` 一次性搬出来。
+
+### 备份与更新
 
 ```bash
-# 备份（SQLite + 音色文件都在数据卷里）
-docker run --rm -v clearframe-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/clearframe-$(date +%F).tar.gz -C /data .
+# 备份：直接打包宿主机目录（停服备份更稳妥，不停服也有一致性较好的 WAL 快照）
+tar czf clearframe-$(date +%F).tar.gz ./data ./logs ./douyin-api
 
 # 更新
 git pull && docker compose up -d --build
