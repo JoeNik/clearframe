@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"log"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -159,6 +161,10 @@ func (s *Server) recoverMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
+				// panic 必须留痕：值 + 完整堆栈，进 stdout 与轮转日志文件，
+				// 否则线上只能看到一句「服务内部错误」无从排查
+				log.Printf("PANIC %s %s ip=%s: %v\n%s",
+					r.Method, r.URL.Path, s.clientIP(r), rec, debug.Stack())
 				writeErr(w, http.StatusInternalServerError, "internal", "服务内部错误")
 			}
 		}()
@@ -247,6 +253,9 @@ func (s *Server) accessLogMW(next http.Handler) http.Handler {
 		sw := &statusWriter{ResponseWriter: w}
 		next.ServeHTTP(sw, r)
 		ms := time.Since(start).Milliseconds()
+
+		// 每请求一行进 stdout/文件（SQLite 里另存 /v1 与 /api 的明细供后台查询）
+		log.Printf("%s %s %d %dms ip=%s", r.Method, r.URL.Path, sw.status, ms, s.clientIP(r))
 
 		if strings.HasPrefix(r.URL.Path, "/v1/") {
 			s.st.AddLog(store.LogEntry{

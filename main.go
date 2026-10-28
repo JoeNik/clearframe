@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"jxivideo/internal/api"
 	"jxivideo/internal/auth"
+	"jxivideo/internal/logx"
 	"jxivideo/internal/store"
 )
 
@@ -36,6 +38,17 @@ func main() {
 	port := env("PORT", "8080")
 	dataDir := env("DATA_DIR", "./data")
 	dbPath := filepath.Join(dataDir, "app.db")
+
+	// 文件日志：stdout（docker json-file 采集）+ LOG_DIR 下的轮转文件双写，
+	// 默认落在数据目录的 logs/ 子目录，宿主机映射一个目录就同时拿到数据与日志。
+	logDir := env("LOG_DIR", filepath.Join(dataDir, "logs"))
+	fileLog, err := logx.Init(logDir)
+	if err != nil {
+		log.Printf("⚠ 文件日志不可用，仅输出到 stdout: %v", err)
+	} else {
+		log.SetOutput(io.MultiWriter(os.Stdout, fileLog))
+		log.Printf("日志目录: %s", logDir)
+	}
 
 	st, err := store.Open(dbPath)
 	if err != nil {
