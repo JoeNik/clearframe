@@ -18,15 +18,79 @@
       <div class="eyebrow" style="margin-bottom:12px">Voice Studio</div>
       <h1 style="font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em">音色工坊</h1>
       <p style="color:var(--text-2);font-size:15px;margin-top:10px;max-width:640px;line-height:1.7">
-        上传或录制一段 10 秒以上的清晰人声，即可复刻这个音色并用任意文本朗读。样本与生成结果都保存在你自己的空间里。
+        选一个喜欢的音色，输入文字就能生成语音；想用自己的声音说话，在第三步录一段 10 秒以上的人声即可克隆。样本与生成结果都保存在你自己的空间里。
       </p>
     </div>
 
-    <!-- 采集 -->
+    <!-- 选音色 -->
     <section class="panel">
       <div class="panel-head">
         <span style="color:var(--accent)">●</span>
-        <h3>第一步 · 采集音色样本</h3>
+        <h3>第一步 · 选一个音色</h3>
+        <span class="sp"></span>
+        <span class="hint">▶ 试听 · 点卡片选用（均为原创音色，非真人克隆）</span>
+      </div>
+      <div class="panel-body">
+        <div id="refGroups">
+          <div class="ref-grid" id="refGrid"><span class="spinner"></span></div>
+        </div>
+
+        <details class="acc-pass" id="customVoice" style="margin-top:14px">
+          <summary>自定义音色描述（进阶）</summary>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <input class="input" id="designHint" placeholder="例如：年轻女性，声音清亮亲切，语速偏快" style="flex:1;min-width:240px">
+            <button class="btn btn-ghost" id="btnUseCustom" type="button" style="flex:none;height:38px;padding:0 14px">用这段描述生成</button>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- 生成 -->
+    <section class="panel">
+      <div class="panel-head">
+        <span style="color:var(--accent)">●</span>
+        <h3>第二步 · 输入文本，生成语音</h3>
+        <span class="sp"></span>
+        <span class="hint" id="keyHint"></span>
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label>语气风格</label>
+          <div class="style-chips" id="styleChips"></div>
+        </div>
+
+        <div class="field">
+          <label>合成文本 <span class="req">*</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3)" id="charCount">0 / 2000</span>
+          </label>
+          <textarea class="textarea" id="ttsText" style="min-height:120px"
+            placeholder="输入要朗读的文本。支持 (温柔) 这类风格标签，也支持 [笑] 这类音频标签。&#10;勾选下方「按行批量」后，每一行会单独生成一个音频。"></textarea>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:2px;flex-wrap:wrap">
+            <label class="switchline"><input type="checkbox" id="batchMode"> 按行批量生成</label>
+            <span class="field-hint" id="batchHint"></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btnSynth">生成语音</button>
+          <span id="synthStatus" style="font-size:12.5px;color:var(--text-3)"></span>
+        </div>
+
+        <div id="synthResult" class="hidden" style="margin-top:16px">
+          <div class="selbar" style="margin-bottom:10px">
+            <span id="synthMeta" style="flex:1"></span>
+            <a class="btn btn-ghost btn-xs" id="btnDlOne" href="#" download>下载</a>
+          </div>
+          <audio id="synthPlayer" controls style="width:100%;height:38px"></audio>
+        </div>
+      </div>
+    </section>
+
+    <!-- 克隆（可选） -->
+    <section class="panel">
+      <div class="panel-head">
+        <span style="color:var(--accent)">●</span>
+        <h3>第三步 · 克隆自己的声音（可选）</h3>
         <span class="sp"></span>
         <span class="hint" id="limitHint"></span>
       </div>
@@ -78,7 +142,7 @@
       </div>
     </section>
 
-    <!-- 音色库 -->
+    <!-- 音色库管理 -->
     <section class="panel">
       <div class="panel-head">
         <h3>我的音色</h3>
@@ -99,72 +163,6 @@
       </div>
     </section>
 
-    <!-- 合成 -->
-    <section class="panel">
-      <div class="panel-head">
-        <h3>第二步 · 生成语音</h3>
-        <span class="sp"></span>
-        <span class="hint" id="keyHint"></span>
-      </div>
-      <div class="panel-body">
-        <div class="field" id="refPick">
-          <label>参考音色 <span class="opt">点卡片选用 · ▶ 试听（首次播放现场合成，约数秒）· 均为原创音色，非真人克隆</span></label>
-          <div class="ref-grid" id="refGrid"></div>
-        </div>
-
-        <div class="tabs" id="modeTabs" style="margin-bottom:18px">
-          <button data-mode="clone" class="on">克隆音色</button>
-          <button data-mode="preset">预置音色</button>
-          <button data-mode="design">音色设计</button>
-        </div>
-
-        <div class="field" id="voicePick">
-          <label>选择音色 <span class="req">*</span></label>
-          <select class="select" id="selVoice"></select>
-        </div>
-
-        <div class="field hidden" id="presetPick">
-          <label>预置音色</label>
-          <select class="select" id="selPreset"></select>
-        </div>
-
-        <div class="field hidden" id="designPick">
-          <label>音色描述 <span class="req">*</span></label>
-          <input class="input" id="designHint" placeholder="例如：年轻女性，声音清亮亲切，语速偏快">
-        </div>
-
-        <div class="field">
-          <label>语气风格</label>
-          <div class="style-chips" id="styleChips"></div>
-        </div>
-
-        <div class="field">
-          <label>合成文本 <span class="req">*</span>
-            <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3)" id="charCount">0 / 2000</span>
-          </label>
-          <textarea class="textarea" id="ttsText" style="min-height:120px"
-            placeholder="输入要朗读的文本。支持 (温柔) 这类风格标签，也支持 [笑] 这类音频标签。&#10;勾选下方「按行批量」后，每一行会单独生成一个音频。"></textarea>
-          <div style="display:flex;gap:16px;align-items:center;margin-top:2px;flex-wrap:wrap">
-            <label class="switchline"><input type="checkbox" id="batchMode"> 按行批量生成</label>
-            <span class="field-hint" id="batchHint"></span>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary" id="btnSynth">生成语音</button>
-          <span id="synthStatus" style="font-size:12.5px;color:var(--text-3)"></span>
-        </div>
-
-        <div id="synthResult" class="hidden" style="margin-top:16px">
-          <div class="selbar" style="margin-bottom:10px">
-            <span id="synthMeta" style="flex:1"></span>
-            <a class="btn btn-ghost btn-xs" id="btnDlOne" href="#" download>下载</a>
-          </div>
-          <audio id="synthPlayer" controls style="width:100%;height:38px"></audio>
-        </div>
-      </div>
-    </section>
-
     <!-- 记录 -->
     <section class="panel">
       <div class="panel-head">
@@ -179,8 +177,7 @@
           <span id="renderSelCount">未选择</span>
           <span class="sp"></span>
           <button class="btn btn-ghost btn-xs" id="btnDlRenders" disabled>批量下载</button>
-          <button class="btn btn-danger btn-xs" id="btnDelRenders" disabled>删除选中</button>
-          <button class="btn btn-danger btn-xs" id="btnClearRenders">一键清空</button>
+          <button class="btn btn-danger btn-xs" id="btnDelRenders" disabled>一键清空</button>
         </div>
         <div class="render-list" id="renderList"></div>
       </div>
@@ -192,9 +189,9 @@
     <div class="aside-card">
       <h5>怎么用</h5>
       <ol style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text-2);line-height:1.9">
-        <li>上传或录制 ≥10 秒干净人声</li>
-        <li>保存后自动进入「我的音色」</li>
-        <li>选择音色 + 输入文本，生成</li>
+        <li>在第一步选一个音色，点 ▶ 试听</li>
+        <li>第二步输入文本，生成语音</li>
+        <li>想用自己的声音？第三步录一段克隆</li>
         <li>试听满意后勾选批量下载</li>
       </ol>
     </div>
@@ -216,6 +213,9 @@
 </div>
 
 <footer id="footer"></footer>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
 <script src="/assets/app.js"></script>
 <script src="/assets/tts.js"></script>
 </body>

@@ -8,7 +8,7 @@
     renders: [],
     selVoices: new Set(),
     selRenders: new Set(),
-    mode: 'clone',
+    voice: null,          // 当前选中的音色 {kind, key, name, voice?/hint?/voiceId?}
     src: 'upload',
     pending: null,        // {blob, name, source, durationMs}
     pendingUrl: null,
@@ -254,8 +254,10 @@
     // 清理已失效的选择
     const ids = new Set(state.voices.map(function (v) { return v.id; }));
     state.selVoices.forEach(function (id) { if (!ids.has(id)) state.selVoices.delete(id); });
+    // 当前选中的克隆音色被删掉时，清空选择
+    if (state.voice && state.voice.kind === 'clone' && !ids.has(state.voice.voiceId)) state.voice = null;
     renderVoices();
-    fillVoiceSelect();
+    renderVoicePicker();
   }
 
   function renderVoices() {
@@ -295,19 +297,6 @@
     $('#voiceSelAll').checked = all;
   }
 
-  function fillVoiceSelect() {
-    const sel = $('#selVoice');
-    const prev = sel.value;
-    if (!state.voices.length) {
-      sel.innerHTML = '<option value="">（音色库为空，请先采集）</option>';
-      return;
-    }
-    sel.innerHTML = state.voices.map(function (v) {
-      return '<option value="' + v.id + '">' + esc(v.name) +
-        (v.durationMs ? ' · ' + dur(v.durationMs) : '') + '</option>';
-    }).join('');
-    if (prev && state.voices.some(function (v) { return String(v.id) === prev; })) sel.value = prev;
-  }
 
   // ================= 合成 =================
   async function synthesize() {
@@ -315,17 +304,21 @@
     if (!text) { toast('请输入要合成的文本', 'err'); return; }
     const max = state.cfg.maxChars || 2000;
 
-    const payloadBase = { mode: state.mode, style: state.style, format: 'wav' };
-    if (state.mode === 'clone') {
-      const vid = $('#selVoice').value;
-      if (!vid) { toast('请先选择一个克隆音色', 'err'); return; }
-      payloadBase.voiceId = Number(vid);
-    } else if (state.mode === 'preset') {
-      payloadBase.preset = $('#selPreset').value;
+    const payloadBase = { style: state.style, format: 'wav' };
+    const sel = state.voice;
+    if (!sel) { toast('请先在第一步选择一个音色', 'err'); return; }
+    if (sel.kind === 'preset') {
+      payloadBase.mode = 'preset';
+      payloadBase.preset = sel.voice;
+    } else if (sel.kind === 'design') {
+      payloadBase.mode = 'design';
+      payloadBase.design = sel.key === 'custom'
+        ? $('#designHint').value.trim()
+        : sel.hint;
+      if (!payloadBase.design) { toast('请先填写自定义音色描述', 'err'); return; }
     } else {
-      const d = $('#designHint').value.trim();
-      if (!d) { toast('请填写音色描述', 'err'); return; }
-      payloadBase.design = d;
+      payloadBase.mode = 'clone';
+      payloadBase.voiceId = sel.voiceId;
     }
 
     const batch = $('#batchMode').checked;
@@ -379,82 +372,104 @@
     await loadRenders();
   }
 
-  // ================= 参考音色 =================
+  // ================= 音色选择 =================
   let refItems = [];
   let refAudio = null;
   let refPlaying = null;
 
   async function loadRefVoices() {
-    const grid = $('#refGrid');
     try {
       const res = await api.get('/api/tts/ref-voices');
       refItems = res.items || [];
-      renderRefGrid(refItems);
-      renderPresetSelect(refItems, (state.cfg || {}).defaultVoice);
     } catch (e) {
-      grid.innerHTML = '<span class="field-hint">参考音色加载失败：' + esc(e.message) + '</span>';
+      refItems = [];
+    }
+    renderVoicePicker();
+  }
+
+  // 统一音色选择器：官方预置 / 原创设计 / 我的克隆音色 三组卡片
+  function renderVoicePicker() {
+    const grid = $('#refGrid');
+    if (!grid) return;
+    const clones = state.voices.map(function (v) {
+      return {
+        key: 'clone:' + v.id, kind: 'clone', name: v.name,
+        desc: (v.durationMs ? dur(v.durationMs) + ' · ' : '') + bytes(v.size) + ' · 点 ▶ 听样本，点卡片选用',
+        sex: '', demoUrl: '/api/tts/voices/' + v.id + '/audio', voiceId: v.id, badge: ''
+      };
+    });
+    const groups = [
+      { title: '官方预置', items: refItems.filter(function (v) { return v.kind === 'preset'; }) },
+      { title: '原创设计（网红风格）', items: refItems.filter(function (v) { return v.kind === 'design'; }) }
+    ];
+    if (clones.length) groups.push({ title: '我的克隆音色', items: clones });
+
+    let html = '';
+    groups.forEach(function (g) {
+      if (!g.items.length) return;
+      html += '<div class="ref-group"><div class="ref-group-title">' + esc(g.title) + '</div>' +
+        '<div class="ref-grid">' + g.items.map(voiceCardHTML).join('') + '</div></div>';
+    });
+    grid.innerHTML = html || '<span class="field-hint">暂无可用音色</span>';
+    // 默认选中：站点默认预置音色（如冰糖），否则第一个预置
+    if (!state.voice && refItems.length) {
+      const def = refItems.find(function (v) {
+        return v.kind === 'preset' && v.voice === (state.cfg || {}).defaultVoice;
+      }) || refItems.find(function (v) { return v.kind === 'preset'; });
+      if (def) state.voice = def;
+    }
+    if (state.voice) {
+      $$('#refGrid .ref-card').forEach(function (c) {
+        c.classList.toggle('sel', c.getAttribute('data-key') === state.voice.key);
+      });
     }
   }
 
-  // 预置音色下拉：官方预置 + 原创设计两组，全部可作为预置选项直接合成
-  function renderPresetSelect(items, defaultVoice) {
-    const sel = $('#selPreset');
-    if (!sel) return;
-    const official = items.filter(function (v) { return v.kind === 'preset'; });
-    const designed = items.filter(function (v) { return v.kind === 'design'; });
-    const opt = function (v) {
-      return '<option value="ref:' + esc(v.key) + '">' + esc(v.name) + '（' + esc(v.sex) + ' · ' + esc(v.lang.toUpperCase()) + '）</option>';
-    };
-    sel.innerHTML =
-      '<optgroup label="官方预置">' + official.map(opt).join('') + '</optgroup>' +
-      '<optgroup label="原创设计（网红风格）">' + designed.map(opt).join('') + '</optgroup>';
-    const def = defaultVoice ? items.find(function (v) { return v.kind === 'preset' && v.voice === defaultVoice; }) : null;
-    if (def) sel.value = 'ref:' + def.key;
+  function voiceCardHTML(v) {
+    const sel = state.voice && state.voice.key === v.key ? ' sel' : '';
+    return '<div class="ref-card' + sel + '" data-key="' + esc(v.key) + '" tabindex="0" title="点击选用">' +
+      '<button class="ref-play" data-key="' + esc(v.key) + '" title="试听">▶</button>' +
+      '<div class="ref-main">' +
+      '<div class="ref-name">' + esc(v.name) +
+      (v.sex ? ' <span class="tag">' + esc(v.sex) + (v.lang ? ' · ' + esc(v.lang.toUpperCase()) : '') + '</span>' : '') +
+      (v.badge ? '<span class="tag ' + (v.badge === '原创' ? 'tag-accent' : '') + '">' + esc(v.badge) + '</span>' : '') + '</div>' +
+      '<div class="ref-desc">' + esc(v.desc) + '</div>' +
+      '</div></div>';
   }
 
-  function renderRefGrid(items) {
-    const grid = $('#refGrid');
-    grid.innerHTML = items.map(function (v) {
-      return '<div class="ref-card" data-key="' + esc(v.key) + '" tabindex="0" title="点击选用">' +
-        '<button class="ref-play" data-key="' + esc(v.key) + '" title="试听">▶</button>' +
-        '<div class="ref-main">' +
-        '<div class="ref-name">' + esc(v.name) +
-        ' <span class="tag">' + esc(v.sex) + ' · ' + esc(v.lang.toUpperCase()) + '</span>' +
-        (v.kind === 'design' ? '<span class="tag tag-accent">原创</span>' : '<span class="tag">官方</span>') + '</div>' +
-        '<div class="ref-desc">' + esc(v.desc) + '</div>' +
-        '</div></div>';
-    }).join('');
-    grid.addEventListener('click', onRefClick);
+  function selectVoice(v) {
+    state.voice = v;
+    $$('#refGrid .ref-card').forEach(function (c) {
+      c.classList.toggle('sel', c.getAttribute('data-key') === v.key);
+    });
   }
 
-  function onRefClick(e) {
+  function findVoiceByKey(key) {
+    let v = refItems.find(function (x) { return x.key === key; });
+    if (v) return v;
+    return state.voices.map(function (c) {
+      return {
+        key: 'clone:' + c.id, kind: 'clone', name: c.name, sex: '',
+        voiceId: c.id, demoUrl: '/api/tts/voices/' + c.id + '/audio'
+      };
+    }).find(function (x) { return x.key === key; }) || null;
+  }
+
+  function onVoiceClick(e) {
     const play = e.target.closest('.ref-play');
     const card = e.target.closest('.ref-card');
     if (!card) return;
     const key = card.getAttribute('data-key');
-    if (play) { playRefDemo(card, key); return; }
-    const v = refItems.find(function (x) { return x.key === key; });
+    const v = findVoiceByKey(key);
     if (!v) return;
-    // 选用：联动合成模式与参数
-    if (v.kind === 'preset') {
-      setModeTab('preset');
-      $('#selPreset').value = 'ref:' + v.key;
-    } else {
-      setModeTab('design');
-      $('#designHint').value = v.hint;
-    }
-    $$('#refGrid .ref-card').forEach(function (c) { c.classList.toggle('sel', c === card); });
-    toast('已选用「' + v.name + '」，输入文本即可生成', 'ok');
+    if (play) { playVoiceDemo(card, v); return; }
+    selectVoice(v);
+    toast('已选用「' + v.name + '」，在下方输入文本即可生成', 'ok');
   }
 
-  function setModeTab(mode) {
-    const b = $('#modeTabs button[data-mode="' + mode + '"]');
-    if (b) b.click();
-  }
-
-  async function playRefDemo(card, key) {
+  async function playVoiceDemo(card, v) {
     const btn = card.querySelector('.ref-play');
-    if (refPlaying === key && refAudio) {
+    if (refPlaying === v.key && refAudio) {
       refAudio.pause();
       refAudio = null; refPlaying = null;
       btn.textContent = '▶'; btn.classList.remove('on');
@@ -462,16 +477,21 @@
     }
     $$('#refGrid .ref-play').forEach(function (b) { b.textContent = '▶'; b.classList.remove('on'); });
     if (refAudio) { refAudio.pause(); refAudio = null; }
-    refPlaying = key;
-    btn.textContent = '…';
-    btn.classList.add('on');
-    refAudio = new Audio('/api/tts/ref-voices/' + encodeURIComponent(key) + '/demo');
+    refPlaying = v.key;
+    const url = v.kind === 'clone' ? v.demoUrl
+      : '/api/tts/ref-voices/' + encodeURIComponent(v.key) + '/demo';
+    // 克隆样本是现成音频，立即播放；预置/设计首次播放由服务端现场合成
+    if (v.kind !== 'clone') {
+      btn.textContent = '…';
+      btn.classList.add('on');
+    }
+    refAudio = new Audio(url);
     refAudio.addEventListener('ended', function () {
       btn.textContent = '▶'; btn.classList.remove('on'); refPlaying = null;
     });
     refAudio.addEventListener('error', function () {
       btn.textContent = '▶'; btn.classList.remove('on'); refPlaying = null;
-      toast('试听生成失败，稍后可重试', 'err');
+      toast('试听失败：' + (state.cfg && state.cfg.hasKey ? '生成出错，稍后可重试' : '请先在后台配置 MIMO API Key'), 'err');
     });
     try {
       await refAudio.play();
@@ -630,16 +650,25 @@
     });
     $('#btnRefreshVoices').addEventListener('click', loadVoices);
 
-    // 合成模式
-    $('#modeTabs').addEventListener('click', function (e) {
-      const b = e.target.closest('button[data-mode]');
-      if (!b) return;
-      state.mode = b.getAttribute('data-mode');
-      $$('#modeTabs button').forEach(function (x) { x.classList.remove('on'); });
-      b.classList.add('on');
-      $('#voicePick').classList.toggle('hidden', state.mode !== 'clone');
-      $('#presetPick').classList.toggle('hidden', state.mode !== 'preset');
-      $('#designPick').classList.toggle('hidden', state.mode !== 'design');
+    // 音色选择：卡片点击（事件委托绑在静态容器上）
+    $('#refGroups').addEventListener('click', function (e) {
+      const play = e.target.closest('.ref-play');
+      const card = e.target.closest('.ref-card');
+      if (!card) return;
+      const v = findVoiceByKey(card.getAttribute('data-key'));
+      if (!v) return;
+      if (play) { playVoiceDemo(card, v); return; }
+      selectVoice(v);
+      toast('已选用「' + v.name + '」，在下方输入文本即可生成', 'ok');
+    });
+
+    // 自定义音色描述
+    $('#btnUseCustom').addEventListener('click', function () {
+      const d = $('#designHint').value.trim();
+      if (!d) { toast('请先填写音色描述', 'err'); return; }
+      state.voice = { key: 'custom', kind: 'design', name: '自定义描述', desc: d, hint: d };
+      $$('#refGrid .ref-card').forEach(function (c) { c.classList.remove('sel'); });
+      toast('将按你的描述生成音色，输入文本即可开始', 'ok');
     });
 
     // 字数
