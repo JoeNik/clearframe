@@ -29,7 +29,7 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 
 	var me any
 	if u, ok := s.currentUser(r); ok {
-		me = map[string]any{"id": u.ID, "username": u.Username, "role": u.Role, "createdAt": u.CreatedAt,
+		me = map[string]any{"id": u.ID, "username": u.Username, "email": u.Email, "role": u.Role, "createdAt": u.CreatedAt,
 			"mustChangePass": u.MustChangePass}
 	}
 
@@ -331,7 +331,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.guard.reset(ip)
-	token, err := s.st.NewSession(u.ID, ip, r.UserAgent(), 7*24*time.Hour)
+	// 会话有效期由后台「全局设置」控制（小时），兜底 30 天
+	ttl := time.Duration(cfg.SessionTTLHours) * time.Hour
+	if ttl <= 0 {
+		ttl = 30 * 24 * time.Hour
+	}
+	token, err := s.st.NewSession(u.ID, ip, r.UserAgent(), ttl)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "session", "登录状态创建失败")
 		return
@@ -344,7 +349,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
-		MaxAge:   7 * 24 * 3600,
+		MaxAge:   int(ttl.Seconds()),
 	})
 	writeOK(w, map[string]any{"id": u.ID, "username": u.Username, "role": u.Role, "mustChangePass": u.MustChangePass})
 }
@@ -364,7 +369,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeOK(w, map[string]any{"user": map[string]any{
-		"id": u.ID, "username": u.Username, "role": u.Role, "createdAt": u.CreatedAt,
+		"id": u.ID, "username": u.Username, "email": u.Email, "role": u.Role, "createdAt": u.CreatedAt,
 		"mustChangePass": u.MustChangePass,
 	}})
 }

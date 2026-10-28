@@ -35,9 +35,9 @@ func (s *Store) GetUserByName(username string) (User, string, error) {
 	var created int64
 	var last sql.NullInt64
 	var mustChange int
-	err := s.db.QueryRow(`SELECT id, username, pass_hash, role, status, note, created_at, last_login, must_change_pass
+	err := s.db.QueryRow(`SELECT id, username, email, pass_hash, role, status, note, created_at, last_login, must_change_pass
 		FROM users WHERE username = ?`, username).
-		Scan(&u.ID, &u.Username, &hash, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange)
+		Scan(&u.ID, &u.Username, &u.Email, &hash, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, "", ErrNotFound
 	}
@@ -59,9 +59,9 @@ func (s *Store) GetUserByID(id int64) (User, error) {
 	var created int64
 	var last sql.NullInt64
 	var mustChange int
-	err := s.db.QueryRow(`SELECT id, username, role, status, note, created_at, last_login, must_change_pass
+	err := s.db.QueryRow(`SELECT id, username, email, role, status, note, created_at, last_login, must_change_pass
 		FROM users WHERE id = ?`, id).
-		Scan(&u.ID, &u.Username, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange)
+		Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, ErrNotFound
 	}
@@ -79,7 +79,7 @@ func (s *Store) GetUserByID(id int64) (User, error) {
 
 // ListUsers 列出用户
 func (s *Store) ListUsers() ([]User, error) {
-	rows, err := s.db.Query(`SELECT id, username, role, status, note, created_at, last_login, must_change_pass
+	rows, err := s.db.Query(`SELECT id, username, email, role, status, note, created_at, last_login, must_change_pass
 		FROM users ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (s *Store) ListUsers() ([]User, error) {
 		var created int64
 		var last sql.NullInt64
 		var mustChange int
-		if err := rows.Scan(&u.ID, &u.Username, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange); err != nil {
 			return nil, err
 		}
 		u.MustChangePass = mustChange != 0
@@ -159,6 +159,49 @@ func (s *Store) SetMustChangePass(id int64, must bool) error {
 	}
 	_, err := s.db.Exec(`UPDATE users SET must_change_pass = ? WHERE id = ?`, v, id)
 	return err
+}
+
+// SetUserEmail 绑定/更新邮箱
+func (s *Store) SetUserEmail(id int64, email string) error {
+	_, err := s.db.Exec(`UPDATE users SET email = ? WHERE id = ?`, strings.TrimSpace(strings.ToLower(email)), id)
+	return err
+}
+
+// GetUserByEmail 按邮箱查询用户
+func (s *Store) GetUserByEmail(email string) (User, error) {
+	var u User
+	var created int64
+	var last sql.NullInt64
+	var mustChange int
+	err := s.db.QueryRow(`SELECT id, username, email, role, status, note, created_at, last_login, must_change_pass
+		FROM users WHERE email = ?`, strings.TrimSpace(strings.ToLower(email))).
+		Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Status, &u.Note, &created, &last, &mustChange)
+	if errors.Is(err, sql.ErrNoRows) {
+		return u, ErrNotFound
+	}
+	if err != nil {
+		return u, err
+	}
+	u.MustChangePass = mustChange != 0
+	u.CreatedAt = time.Unix(created, 0)
+	if last.Valid {
+		t := time.Unix(last.Int64, 0)
+		u.LastLogin = &t
+	}
+	return u, nil
+}
+
+// EmailTaken 检查邮箱是否已被其他账号占用
+func (s *Store) EmailTaken(email string, exceptUserID int64) (bool, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(1) FROM users WHERE email = ? AND id <> ?`,
+		strings.TrimSpace(strings.ToLower(email)), exceptUserID).Scan(&n)
+	return n > 0, err
+}
+
+// DeleteSessionsByUser 使某用户全部会话失效（重置密码后强制重新登录）
+func (s *Store) DeleteSessionsByUser(userID int64) {
+	_, _ = s.db.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID)
 }
 
 // ---------- sessions ----------

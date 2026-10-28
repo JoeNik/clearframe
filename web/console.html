@@ -27,18 +27,33 @@
         <div class="panel-body">
           <div style="max-width:380px;margin:0 auto;padding:16px 0">
             <h3 id="formTitle" style="font-size:17px;margin-bottom:6px">登录</h3>
-            <p id="modeHint" style="font-size:13px;color:var(--text-3);margin-bottom:20px">还没有账号？<a href="#" id="toRegister" style="color:var(--accent)">立即注册</a></p>
+            <p id="modeHint" style="font-size:13px;color:var(--text-3);margin-bottom:20px">忘记密码？<a href="#" id="toReset" style="color:var(--accent)">找回</a> · 还没有账号？<a href="#" id="toRegister" style="color:var(--accent)">立即注册</a></p>
             <div class="field">
               <label>用户名</label>
               <input class="input" id="lgUser" autocomplete="username" placeholder="3-32 位字母、数字、下划线或短横线">
             </div>
-            <div class="field">
+            <div class="field" id="lgPassField">
               <label>密码</label>
               <input class="input" id="lgPass" type="password" autocomplete="current-password" placeholder="请输入密码">
             </div>
             <div class="field hidden" id="confirmField">
               <label>确认密码</label>
               <input class="input" id="lgPass2" type="password" autocomplete="new-password" placeholder="再输入一遍密码">
+            </div>
+            <div class="field hidden" id="rsEmailField">
+              <label>绑定邮箱</label>
+              <input class="input" id="rsEmail" type="email" autocomplete="email" placeholder="该账号绑定的邮箱地址">
+            </div>
+            <div class="field hidden" id="rsCodeField">
+              <label>邮箱验证码</label>
+              <div style="display:flex;gap:8px">
+                <input class="input" id="rsCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="flex:1">
+                <button class="btn btn-ghost" id="btnRsCode" type="button" style="flex:none;height:38px;padding:0 14px">发送验证码</button>
+              </div>
+            </div>
+            <div class="field hidden" id="rsNewPassField">
+              <label>新密码（至少 8 位）</label>
+              <input class="input" id="rsNewPass" type="password" autocomplete="new-password" placeholder="设置新密码">
             </div>
             <button class="btn btn-primary" id="btnLogin" style="width:100%;justify-content:center">登录</button>
             <div id="lgMsg" style="font-size:12.5px;color:var(--red);margin-top:12px;min-height:18px"></div>
@@ -60,6 +75,7 @@
         <div class="panel-body">
           <div class="acc-grid">
             <div class="acc-item"><span class="acc-k">用户名</span><span class="acc-v" id="accName">—</span></div>
+            <div class="acc-item"><span class="acc-k">邮箱</span><span class="acc-v" id="accEmail" style="word-break:break-all">未绑定</span></div>
             <div class="acc-item"><span class="acc-k">注册时间</span><span class="acc-v" id="accCreated">—</span></div>
             <div class="acc-item"><span class="acc-k">今日调用</span><span class="acc-v" id="accToday">—</span></div>
             <div class="acc-item"><span class="acc-k">累计调用</span><span class="acc-v" id="accTotal">—</span></div>
@@ -83,6 +99,27 @@
               <div style="display:flex;align-items:center;gap:10px">
                 <button class="btn btn-primary btn-sm" id="btnChangePass">保存新密码</button>
                 <span id="pwMsg" style="font-size:12px;color:var(--text-3)"></span>
+              </div>
+            </div>
+          </details>
+
+          <details class="acc-pass" id="acc-email">
+            <summary>绑定 / 更换邮箱</summary>
+            <div style="display:grid;gap:12px;margin-top:14px;max-width:420px">
+              <div class="field">
+                <label>邮箱地址</label>
+                <input class="input" id="bindEmail" type="email" autocomplete="email" placeholder="用于找回密码，请填写真实邮箱">
+              </div>
+              <div class="field">
+                <label>邮箱验证码</label>
+                <div style="display:flex;gap:8px">
+                  <input class="input" id="bindCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="flex:1">
+                  <button class="btn btn-ghost" id="btnBindCode" type="button" style="flex:none;height:38px;padding:0 14px">发送验证码</button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <button class="btn btn-primary btn-sm" id="btnBindEmail">绑定邮箱</button>
+                <span id="bindMsg" style="font-size:12px;color:var(--text-3)"></span>
               </div>
             </div>
           </details>

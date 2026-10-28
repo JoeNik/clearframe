@@ -83,6 +83,11 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/auth/me", s.handleMe)
 	m.HandleFunc("POST /api/auth/register", s.handleRegister)
 	m.HandleFunc("POST /api/auth/password", s.handleChangePassword)
+	m.HandleFunc("POST /api/auth/forgot-code", s.handleForgotCode)
+	m.HandleFunc("POST /api/auth/reset-password", s.handleResetPassword)
+	m.HandleFunc("POST /api/account/email-code", s.requireLogin(s.handleAccountEmailCode))
+	m.HandleFunc("POST /api/account/bind-email", s.requireLogin(s.handleBindEmail))
+	m.HandleFunc("POST /api/admin/email-test", s.requireAdmin(s.handleAdminEmailTest))
 
 	// ---- 用户控制台：密钥与用量 ----
 	login := func(h http.HandlerFunc) http.HandlerFunc { return s.requireLogin(h) }

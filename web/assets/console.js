@@ -10,55 +10,125 @@
   function el(id) { return document.getElementById(id); }
   function show(node, on) { node.classList.toggle('hidden', !on); }
 
-  // ---------- 登录 / 注册（双模式表单） ----------
-  let MODE = 'login'; // login | register
+  // ---------- 登录 / 注册 / 找回密码（三模式表单） ----------
+  let MODE = 'login'; // login | register | reset
 
   function setMode(m) {
     MODE = m;
     const reg = m === 'register';
-    el('formTitle').textContent = reg ? '创建新账号' : '登录';
+    const reset = m === 'reset';
+    el('formTitle').textContent = reset ? '找回密码' : reg ? '创建新账号' : '登录';
     show(el('confirmField'), reg);
-    el('btnLogin').textContent = reg ? '注册并登录' : '登录';
-    el('modeHint').innerHTML = reg
-      ? '已有账号？<a href="#" id="toLogin" style="color:var(--accent)">返回登录</a>'
-      : '还没有账号？<a href="#" id="toRegister" style="color:var(--accent)">立即注册</a>';
+    show(el('lgPassField'), !reset);
+    show(el('rsEmailField'), reset);
+    show(el('rsCodeField'), reset);
+    show(el('rsNewPassField'), reset);
+    el('btnLogin').textContent = reset ? '重置密码' : reg ? '注册并登录' : '登录';
+    let hint;
+    if (reset) {
+      hint = '想起密码了？<a href="#" id="toLogin" style="color:var(--accent)">返回登录</a>';
+    } else if (reg) {
+      hint = '已有账号？<a href="#" id="toLogin" style="color:var(--accent)">返回登录</a>';
+    } else {
+      hint = '忘记密码？<a href="#" id="toReset" style="color:var(--accent)">找回</a>' +
+        ' · 还没有账号？<a href="#" id="toRegister" style="color:var(--accent)">立即注册</a>';
+    }
+    el('modeHint').innerHTML = hint;
     el('lgMsg').textContent = '';
-    const link = el(reg ? 'toLogin' : 'toRegister');
-    if (link) link.addEventListener('click', function (e) { e.preventDefault(); setMode(reg ? 'login' : 'register'); });
+    const bind = function (id, fn) {
+      const a = el(id);
+      if (a) a.addEventListener('click', function (e) { e.preventDefault(); fn(); });
+    };
+    bind('toLogin', function () { setMode('login'); });
+    bind('toRegister', function () { setMode('register'); });
+    bind('toReset', function () { setMode('reset'); });
+  }
+
+  // 发送按钮倒计时
+  function codeCountdown(btn, seconds) {
+    let left = seconds || 60;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    const t = setInterval(function () {
+      left--;
+      btn.textContent = left + ' s 后重发';
+      if (left <= 0) {
+        clearInterval(t);
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    }, 1000);
   }
 
   function bindLogin() {
+    // 初始渲染走一次 setMode，让三套字段显隐与模式链接监听就位
+    setMode('login');
     const submit = async function () {
-      const u = el('lgUser').value.trim();
-      const p = el('lgPass').value;
-      if (!u || !p) { el('lgMsg').textContent = '请填写用户名和密码'; return; }
       const btn = el('btnLogin');
       btn.disabled = true;
       try {
-        if (MODE === 'register') {
-          const p2 = el('lgPass2').value;
-          if (p2 !== p) { el('lgMsg').textContent = '两次输入的密码不一致'; btn.disabled = false; return; }
-          if (p.length < 8) { el('lgMsg').textContent = '密码至少 8 位'; btn.disabled = false; return; }
-          btn.textContent = '注册中…';
-          await api.post('/api/auth/register', { username: u, password: p });
-          await api.post('/api/auth/login', { username: u, password: p });
+        if (MODE === 'reset') {
+          const u = el('lgUser').value.trim();
+          const em = el('rsEmail').value.trim();
+          const code = el('rsCode').value.trim();
+          const np = el('rsNewPass').value;
+          if (!u || !em || !code) { el('lgMsg').textContent = '请填写用户名、邮箱与验证码'; btn.disabled = false; return; }
+          if (np.length < 8) { el('lgMsg').textContent = '新密码至少 8 位'; btn.disabled = false; return; }
+          btn.textContent = '重置中…';
+          await api.post('/api/auth/reset-password', { username: u, code: code, password: np });
+          toast('密码已重置，请用新密码登录', 'ok');
+          setMode('login');
+          el('lgUser').value = u;
+          el('lgPass').value = '';
+          el('lgMsg').textContent = '';
         } else {
-          btn.textContent = '登录中…';
-          await api.post('/api/auth/login', { username: u, password: p });
+          const u = el('lgUser').value.trim();
+          const p = el('lgPass').value;
+          if (!u || !p) { el('lgMsg').textContent = '请填写用户名和密码'; btn.disabled = false; return; }
+          if (MODE === 'register') {
+            const p2 = el('lgPass2').value;
+            if (p2 !== p) { el('lgMsg').textContent = '两次输入的密码不一致'; btn.disabled = false; return; }
+            if (p.length < 8) { el('lgMsg').textContent = '密码至少 8 位'; btn.disabled = false; return; }
+            btn.textContent = '注册中…';
+            await api.post('/api/auth/register', { username: u, password: p });
+            await api.post('/api/auth/login', { username: u, password: p });
+          } else {
+            btn.textContent = '登录中…';
+            await api.post('/api/auth/login', { username: u, password: p });
+          }
+          location.reload();
         }
-        location.reload();
       } catch (e) {
         el('lgMsg').textContent = e.message || '操作失败';
-        btn.disabled = false;
-        btn.textContent = MODE === 'register' ? '注册并登录' : '登录';
+        el('btnLogin').disabled = false;
+        el('btnLogin').textContent = MODE === 'reset' ? '重置密码' : MODE === 'register' ? '注册并登录' : '登录';
       }
     };
     el('btnLogin').addEventListener('click', submit);
     el('lgPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
     el('lgPass2').addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+    el('rsNewPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
     el('toRegister').addEventListener('click', function (e) {
       e.preventDefault();
       setMode('register');
+    });
+    // 找回密码：先发验证码
+    el('btnRsCode').addEventListener('click', async function () {
+      const u = el('lgUser').value.trim();
+      const em = el('rsEmail').value.trim();
+      if (!u || !em) { el('lgMsg').textContent = '请先填写用户名与绑定的邮箱'; return; }
+      const b = el('btnRsCode');
+      b.disabled = true;
+      b.textContent = '发送中…';
+      try {
+        const r = await api.post('/api/auth/forgot-code', { username: u });
+        el('lgMsg').textContent = '验证码已发送至 ' + (r.masked || em) + '，10 分钟内有效';
+        codeCountdown(b, 60);
+      } catch (e) {
+        el('lgMsg').textContent = e.message || '发送失败';
+        b.disabled = false;
+        b.textContent = '发送验证码';
+      }
     });
   }
 
@@ -221,6 +291,7 @@
   function renderAccount(usage) {
     if (!ME) return;
     el('accName').textContent = ME.username || '—';
+    el('accEmail').textContent = ME.email || '未绑定';
     const isAdmin = ME.role === 'admin';
     const roleEl = el('accRole');
     roleEl.textContent = isAdmin ? '管理员' : '普通用户';
@@ -269,6 +340,52 @@
         msg.textContent = e.message || '修改失败';
         msg.style.color = 'var(--red)';
       }
+    });
+  }
+
+  // ---------- 绑定 / 更换邮箱 ----------
+  function bindEmail() {
+    el('btnBindCode').addEventListener('click', async function () {
+      const email = el('bindEmail').value.trim();
+      const msg = el('bindMsg');
+      if (!email) { msg.textContent = '请先填写邮箱地址'; msg.style.color = 'var(--red)'; return; }
+      const b = el('btnBindCode');
+      b.disabled = true;
+      b.textContent = '发送中…';
+      try {
+        const r = await api.post('/api/account/email-code', { email: email });
+        msg.textContent = '验证码已发送至 ' + (r.masked || email) + '，10 分钟内有效';
+        msg.style.color = 'var(--text-3)';
+        codeCountdown(b, 60);
+      } catch (e) {
+        msg.textContent = e.message || '发送失败';
+        msg.style.color = 'var(--red)';
+        b.disabled = false;
+        b.textContent = '发送验证码';
+      }
+    });
+    el('btnBindEmail').addEventListener('click', async function () {
+      const email = el('bindEmail').value.trim();
+      const code = el('bindCode').value.trim();
+      const msg = el('bindMsg');
+      if (!email || !code) { msg.textContent = '请填写邮箱与验证码'; msg.style.color = 'var(--red)'; return; }
+      const b = el('btnBindEmail');
+      b.disabled = true;
+      b.textContent = '绑定中…';
+      try {
+        const r = await api.post('/api/account/bind-email', { email: email, code: code });
+        ME.email = r.email || email;
+        el('accEmail').textContent = ME.email;
+        msg.textContent = '邮箱已绑定';
+        msg.style.color = 'var(--accent)';
+        el('bindCode').value = '';
+        toast('邮箱绑定成功', 'ok');
+      } catch (e) {
+        msg.textContent = e.message || '绑定失败';
+        msg.style.color = 'var(--red)';
+      }
+      b.disabled = false;
+      b.textContent = '绑定邮箱';
     });
   }
 
@@ -328,6 +445,7 @@
     show(el('main'), true);
     renderBase();
     bindPassword();
+    bindEmail();
     el('btnNewKey').addEventListener('click', newKey);
     el('btnRefresh').addEventListener('click', function () { loadUsage().then(function () { toast('已刷新'); }); });
     bindKeyActions();

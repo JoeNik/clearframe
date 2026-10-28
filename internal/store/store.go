@@ -124,6 +124,17 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+CREATE TABLE IF NOT EXISTS email_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email, purpose);
+
 CREATE TABLE IF NOT EXISTS voices (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -273,10 +284,13 @@ func (s *Store) migrate() error {
 		{"interfaces", "upstream_price_unit", "TEXT NOT NULL DEFAULT ''"},
 		// 首次登录强制改密标记：使用内置默认密码的管理员账号为 1
 		{"users", "must_change_pass", "INTEGER NOT NULL DEFAULT 0"},
+		// 找回密码 / 邮箱绑定依赖的邮箱字段
+		{"users", "email", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = s.db.Exec(`ALTER TABLE ` + col.table + ` ADD COLUMN ` + col.name + ` ` + col.def)
 	}
 	_, _ = s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_iface_path ON interfaces(path)`)
+	_, _ = s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`)
 	return nil
 }
 
@@ -322,6 +336,15 @@ func (s *Store) loadSettings() error {
 	}
 	if cfg.MaxBodyMB <= 0 {
 		cfg.MaxBodyMB = def.MaxBodyMB
+	}
+	if cfg.SessionTTLHours <= 0 {
+		cfg.SessionTTLHours = def.SessionTTLHours
+	}
+	if cfg.SMTPPort <= 0 {
+		cfg.SMTPPort = def.SMTPPort
+	}
+	if cfg.SMTPTLS == "" {
+		cfg.SMTPTLS = def.SMTPTLS
 	}
 	s.settings = cfg
 	return nil

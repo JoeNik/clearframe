@@ -87,6 +87,7 @@ type Usage struct {
 type User struct {
 	ID             int64      `json:"id"`
 	Username       string     `json:"username"`
+	Email          string     `json:"email"`
 	Role           string     `json:"role"` // admin | user
 	Status         string     `json:"status"`
 	CreatedAt      time.Time  `json:"createdAt"`
@@ -180,6 +181,15 @@ type Settings struct {
 	// 「抖音作者作品分析」不走上游转发，由本站直连这个旁挂服务翻页聚合
 	DouyinSidecar    string `json:"douyinSidecar"`
 	DouyinSidecarKey string `json:"douyinSidecarKey"`
+	// 登录会话有效期（小时）：作用于 Cookie MaxAge 与会话过期时间，改后对新登录生效
+	SessionTTLHours int `json:"sessionTtlHours"`
+	// 邮件服务（SMTP）：找回密码与邮箱绑定的验证码发信通道
+	SMTPHost string `json:"smtpHost"`
+	SMTPPort int    `json:"smtpPort"`
+	SMTPUser string `json:"smtpUser"`
+	SMTPPass string `json:"smtpPass"`
+	SMTPFrom string `json:"smtpFrom"`
+	SMTPTLS  string `json:"smtpTls"` // ssl(465) | starttls(587) | none
 	GatewayEnabled  bool      `json:"gatewayEnabled"`
 	PublicBase      string    `json:"publicBase"`
 	DefaultQuota    int       `json:"defaultQuota"`
@@ -225,6 +235,9 @@ func DefaultSettings() Settings {
 		RateLimitBurst:  40,
 		MaxBodyMB:       4,
 		BanMinutes:      15,
+		SessionTTLHours: 720, // 登录会话默认 30 天
+		SMTPPort:        465,
+		SMTPTLS:         "ssl",
 		MaintenanceMsg:  "服务升级中，预计 10 分钟后恢复。",
 		TTS: TTSConfig{
 			Enabled:       true,

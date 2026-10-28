@@ -428,6 +428,7 @@ func (s *Server) housekeeping() {
 		s.limiter.gc()
 		s.guard.gc()
 		s.st.PurgeSessions()
+		s.st.PurgeEmailCodes()
 		cfg := s.st.Settings()
 		s.st.PurgeOldRenders(cfg.TTS.KeepRenderDay)
 		s.st.TrimLogs(20000)

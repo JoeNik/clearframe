@@ -178,6 +178,18 @@ func (s *Server) handleAdminSaveSettings(w http.ResponseWriter, r *http.Request)
 	if cfg.MaxBodyMB > 64 {
 		cfg.MaxBodyMB = 64
 	}
+	if cfg.SessionTTLHours <= 0 {
+		cfg.SessionTTLHours = 720
+	}
+	if cfg.SessionTTLHours > 24*365 {
+		cfg.SessionTTLHours = 24 * 365
+	}
+	if cfg.SMTPPort <= 0 {
+		cfg.SMTPPort = 465
+	}
+	if cfg.SMTPTLS == "" {
+		cfg.SMTPTLS = "ssl"
+	}
 	if cfg.TTS.MaxUploadMB <= 0 {
 		cfg.TTS.MaxUploadMB = 2
 	}

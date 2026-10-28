@@ -654,8 +654,31 @@
       '<div id="probeOut" style="margin-top:12px;font-size:12.5px;color:var(--text-3)"></div>' +
       '</div></div>' +
 
+      '<div class="panel"><div class="panel-head"><h3>邮件服务</h3><span class="sp"></span>' +
+      '<button class="btn btn-ghost btn-sm" id="btnEmailTest">保存并发送测试邮件</button></div><div class="panel-body">' +
+      '<div class="form-grid">' +
+      '<div class="full">' + field('SMTP 服务器', input('smtpHost', s.smtpHost, 'smtp.qq.com'),
+        'QQ 邮箱 smtp.qq.com · 163 邮箱 smtp.163.com · 企业邮按服务商文档填写') + '</div>' +
+      field('端口', num('smtpPort', s.smtpPort), 'SSL 465 / STARTTLS 587 / 不加密 25') +
+      field('加密方式',
+        '<select class="select" data-k="smtpTls">' +
+        '<option value="ssl"' + (s.smtpTls === 'ssl' ? ' selected' : '') + '>SSL（端口 465）</option>' +
+        '<option value="starttls"' + (s.smtpTls === 'starttls' ? ' selected' : '') + '>STARTTLS（端口 587）</option>' +
+        '<option value="none"' + (s.smtpTls === 'none' ? ' selected' : '') + '>不加密（端口 25）</option>' +
+        '</select>') +
+      field('SMTP 账号', input('smtpUser', s.smtpUser, '一般为邮箱地址')) +
+      field('SMTP 密码 / 授权码', input('smtpPass', s.smtpPass, 'QQ/163 邮箱需使用授权码，不是登录密码', 'password')) +
+      field('发件人地址', input('smtpFrom', s.smtpFrom, '留空时取 SMTP 账号')) +
+      '<div class="full">' + field('测试收件邮箱', input('emailTestTo', '', 'your@mail.com'),
+        '点右上角「保存并发送测试邮件」验证配置') + '</div>' +
+      '</div>' +
+      '<div id="emailTestOut" style="margin-top:12px;font-size:12.5px;color:var(--text-3)"></div>' +
+      '</div></div>' +
+
       '<div class="panel"><div class="panel-head"><h3>安全与限流</h3></div><div class="panel-body">' +
       '<div class="form-grid">' +
+      field('登录会话有效期 (小时)', num('sessionTtlHours', s.sessionTtlHours),
+        '登录 Cookie 的有效期，默认 720（30 天）；修改后对新登录生效') +
       field('每 IP 每分钟请求数', num('rateLimitPerMin', s.rateLimitPerMin)) +
       field('突发容量', num('rateLimitBurst', s.rateLimitBurst)) +
       field('请求体上限 (MB)', num('maxBodyMb', s.maxBodyMb)) +
@@ -688,6 +711,33 @@
           out.innerHTML = '<span class="tag tag-off">失败</span> <span style="margin-left:6px">' + esc(e.message) + '</span>';
         }
         probeBtn.disabled = false;
+      });
+    }
+
+    // 邮件测试：先把表单里的 SMTP 配置保存，再用保存后的配置发一封测试邮件
+    const emailTestBtn = $('#btnEmailTest');
+    if (emailTestBtn) {
+      emailTestBtn.addEventListener('click', async function () {
+        const out = $('#emailTestOut');
+        const to = ($('#emailTestTo') || {}).value || '';
+        if (!to.trim()) { out.innerHTML = '<span style="color:var(--red)">请先填写测试收件邮箱</span>'; return; }
+        emailTestBtn.disabled = true;
+        out.innerHTML = '<span class="spinner"></span> 保存配置并发送测试邮件…';
+        try {
+          const v = collect($('#adminContent'));
+          v.adminIpAllow = (v.adminIpAllowRaw || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+          delete v.adminIpAllowRaw;
+          v.tts = s.tts;
+          const r = await api.put('/api/admin/settings', v);
+          SETTINGS = r.settings;
+          await api.post('/api/admin/email-test', { to: to.trim() });
+          out.innerHTML = '<span class="tag tag-free">已发送</span> <span style="margin-left:6px">' +
+            '测试邮件已发往 ' + esc(to.trim()) + '，请查收（垃圾箱也看一眼）</span>';
+          toast('测试邮件已发送', 'ok');
+        } catch (e) {
+          out.innerHTML = '<span class="tag tag-off">失败</span> <span style="margin-left:6px">' + esc(e.message) + '</span>';
+        }
+        emailTestBtn.disabled = false;
       });
     }
 
