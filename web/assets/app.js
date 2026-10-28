@@ -210,28 +210,31 @@
 
   function renderHeader(el, site, active, me) {
     if (!el) return;
-    const nav = [
-      ['/#capabilities', '能力', 'caps'],
-      ['/tts', '音色工坊', 'tts'],
-      ['/#about', '关于', 'about']
-    ];
+    const nav = [['/#capabilities', '能力', 'caps']];
+    // 「我的作者」只对登录用户展示：关注与作品快照按账号保存
+    if (me) nav.push(['/authors', '我的作者', 'authors']);
+    nav.push(['/tts', '音色工坊', 'tts'], ['/#about', '关于', 'about']);
     const navHTML = nav.map(function (n) {
       return '<a href="' + n[0] + '" class="' + (active === n[2] ? 'active' : '') + '">' + n[1] + '</a>';
     }).join('');
 
     // 右侧：同一个登录入口，登录后按角色渲染——普通用户只看到自己，
-    // 管理员额外多一个「后台」按钮；未登录统一是「登录 / 注册」
+    // 管理员额外多一个「后台」按钮；未登录统一是「登录 / 注册」。
+    // 文字包一层 .btn-label，小屏下可单独省略/截断，图标保留
     let right;
     if (!me) {
-      right = '<a class="btn btn-ghost btn-sm" href="/console">登录 / 注册</a>' +
-        '<a class="btn btn-ghost btn-sm" href="/#top">' + icon('bolt', 13) + ' 开始解析</a>';
+      right = '<a class="btn btn-ghost btn-sm js-login" href="/console">' +
+        icon('shield', 13) + ' <span class="btn-label">登录 / 注册</span></a>' +
+        '<a class="btn btn-ghost btn-sm hide-xs" href="/#top">' + icon('bolt', 13) +
+        ' <span class="btn-label">开始解析</span></a>';
     } else if (me.role === 'admin') {
-      right = '<a class="btn btn-primary btn-sm" href="/admin">' + icon('settings', 13) + ' 后台</a>' +
-        '<a class="btn btn-ghost btn-sm" href="/console">' + icon('shield', 13) + ' ' +
-        esc(me.username || 'admin') + '</a>';
+      right = '<a class="btn btn-primary btn-sm js-admin" href="/admin">' + icon('settings', 13) +
+        ' <span class="btn-label">后台</span></a>' +
+        '<a class="btn btn-ghost btn-sm js-user" href="/console">' + icon('shield', 13) +
+        ' <span class="btn-label">' + esc(me.username || 'admin') + '</span></a>';
     } else {
-      right = '<a class="btn btn-ghost btn-sm" href="/console">' + icon('shield', 13) + ' ' +
-        esc(me.username || '我的') + '</a>';
+      right = '<a class="btn btn-ghost btn-sm js-user" href="/console">' + icon('shield', 13) +
+        ' <span class="btn-label">' + esc(me.username || '我的') + '</span></a>';
     }
 
     el.className = 'topbar';
@@ -251,7 +254,7 @@
     el.innerHTML =
       '<div class="footer-inner">' +
       '<div class="footer-brand">' + brandHTML(site) +
-      '<p>' + esc(site.desc || '') + '</p>' +
+      '<p>为个人工作流定制的安静工具台 —— 解析、洞察、生成，皆在一处。</p>' +
       '<p class="footer-fine">部分能力来自第三方平台，仅供个人学习与研究，请勿用于商业用途。</p></div>' +
       '<div class="footer-cols">' +
       '<div class="footer-col"><h4>能力</h4>' +

@@ -196,8 +196,8 @@
       return (i ? 'L' : 'M') + (i * (W / (pts.length - 1))).toFixed(1) + ' ' + (H - (v / max) * H).toFixed(1);
     }).join(' ');
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
-      '<path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + ' Z" fill="rgba(198,242,78,.08)"/>' +
-      '<path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      '<path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + ' Z" style="fill:rgba(194,65,12,.07)"/>' +
+      '<path d="' + d + '" style="fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round"/></svg>';
   }
 
   const GROUP_META = [
@@ -251,7 +251,7 @@
     try {
       BOOT = await api.get('/api/public/bootstrap');
     } catch (e) {
-      document.body.innerHTML = '<div style="padding:80px;text-align:center;color:#8b929c">服务暂不可用，请稍后刷新</div>';
+      document.body.innerHTML = '<div style="padding:80px;text-align:center;color:var(--text-3)">服务暂不可用，请稍后刷新</div>';
       return;
     }
     const site = BOOT.site || {};

@@ -231,7 +231,7 @@
       if (accCard && !document.getElementById('accWarn')) {
         const warn = document.createElement('div');
         warn.id = 'accWarn';
-        warn.style.cssText = 'margin:10px 0 2px;padding:9px 12px;border:1px solid rgba(245,196,81,.45);background:rgba(245,196,81,.1);border-radius:8px;font-size:12.5px;color:var(--amber)';
+        warn.style.cssText = 'margin:10px 0 2px;padding:9px 12px;border:1px solid rgba(161,98,7,.45);background:rgba(161,98,7,.08);border-radius:8px;font-size:12.5px;color:var(--amber)';
         warn.textContent = '⚠ 当前仍在使用默认密码，请立即修改';
         accCard.prepend(warn);
       }
