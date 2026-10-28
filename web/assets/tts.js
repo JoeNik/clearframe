@@ -379,6 +379,91 @@
     await loadRenders();
   }
 
+  // ================= 参考音色 =================
+  let refItems = [];
+  let refAudio = null;
+  let refPlaying = null;
+
+  async function loadRefVoices() {
+    const grid = $('#refGrid');
+    try {
+      const res = await api.get('/api/tts/ref-voices');
+      refItems = res.items || [];
+      renderRefGrid(refItems);
+    } catch (e) {
+      grid.innerHTML = '<span class="field-hint">参考音色加载失败：' + esc(e.message) + '</span>';
+    }
+  }
+
+  function renderRefGrid(items) {
+    const grid = $('#refGrid');
+    grid.innerHTML = items.map(function (v) {
+      return '<div class="ref-card" data-key="' + esc(v.key) + '" tabindex="0" title="点击选用">' +
+        '<button class="ref-play" data-key="' + esc(v.key) + '" title="试听">▶</button>' +
+        '<div class="ref-main">' +
+        '<div class="ref-name">' + esc(v.name) +
+        ' <span class="tag">' + esc(v.sex) + ' · ' + esc(v.lang.toUpperCase()) + '</span>' +
+        (v.kind === 'design' ? '<span class="tag tag-accent">原创</span>' : '<span class="tag">官方</span>') + '</div>' +
+        '<div class="ref-desc">' + esc(v.desc) + '</div>' +
+        '</div></div>';
+    }).join('');
+    grid.addEventListener('click', onRefClick);
+  }
+
+  function onRefClick(e) {
+    const play = e.target.closest('.ref-play');
+    const card = e.target.closest('.ref-card');
+    if (!card) return;
+    const key = card.getAttribute('data-key');
+    if (play) { playRefDemo(card, key); return; }
+    const v = refItems.find(function (x) { return x.key === key; });
+    if (!v) return;
+    // 选用：联动合成模式与参数
+    if (v.kind === 'preset') {
+      setModeTab('preset');
+      $('#selPreset').value = v.voice;
+    } else {
+      setModeTab('design');
+      $('#designHint').value = v.hint;
+    }
+    $$('#refGrid .ref-card').forEach(function (c) { c.classList.toggle('sel', c === card); });
+    toast('已选用「' + v.name + '」，输入文本即可生成', 'ok');
+  }
+
+  function setModeTab(mode) {
+    const b = $('#modeTabs button[data-mode="' + mode + '"]');
+    if (b) b.click();
+  }
+
+  async function playRefDemo(card, key) {
+    const btn = card.querySelector('.ref-play');
+    if (refPlaying === key && refAudio) {
+      refAudio.pause();
+      refAudio = null; refPlaying = null;
+      btn.textContent = '▶'; btn.classList.remove('on');
+      return;
+    }
+    $$('#refGrid .ref-play').forEach(function (b) { b.textContent = '▶'; b.classList.remove('on'); });
+    if (refAudio) { refAudio.pause(); refAudio = null; }
+    refPlaying = key;
+    btn.textContent = '…';
+    btn.classList.add('on');
+    refAudio = new Audio('/api/tts/ref-voices/' + encodeURIComponent(key) + '/demo');
+    refAudio.addEventListener('ended', function () {
+      btn.textContent = '▶'; btn.classList.remove('on'); refPlaying = null;
+    });
+    refAudio.addEventListener('error', function () {
+      btn.textContent = '▶'; btn.classList.remove('on'); refPlaying = null;
+      toast('试听生成失败，稍后可重试', 'err');
+    });
+    try {
+      await refAudio.play();
+      btn.textContent = '⏸';
+    } catch (e) {
+      btn.textContent = '▶'; btn.classList.remove('on'); refPlaying = null;
+    }
+  }
+
   // ================= 记录 =================
   async function loadRenders() {
     try {
@@ -656,6 +741,9 @@
       return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' · ' + esc(p.lang.toUpperCase()) + ' ' + esc(p.sex) + '</option>';
     }).join('');
     if (cfg.defaultVoice) $('#selPreset').value = cfg.defaultVoice;
+
+    // 参考音色
+    loadRefVoices();
 
     // 风格
     const chips = $('#styleChips');

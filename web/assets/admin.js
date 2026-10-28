@@ -839,6 +839,8 @@
       '<div style="margin-top:12px;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
       'Key 只用于服务端调用上游，前端仅能获知「是否已配置」。' +
       '</div>' +
+      '<button class="btn btn-ghost btn-block" id="btnPreGenDemo" style="margin-top:10px">预生成参考音色试听（19 个）</button>' +
+      '<div id="pregenOut" style="margin-top:10px;font-size:12px;color:var(--text-3);line-height:1.7"></div>' +
       '</div></div>' +
 
       '<div class="panel"><div class="panel-head"><h3>全部音色样本</h3><span class="sp"></span>' +
@@ -872,6 +874,46 @@
       btn.disabled = false;
       btn.textContent = '保存配置';
     });
+
+    // 预生成参考音色试听：先保存配置，再逐个现场合成并入库
+    const pregBtn = $('#btnPreGenDemo');
+    if (pregBtn) {
+      pregBtn.addEventListener('click', async function () {
+        const out = $('#pregenOut');
+        const v = collect($('#adminContent'));
+        const s0 = cfgRes.settings;
+        s0.tts = Object.assign({}, t, v);
+        try { await api.put('/api/admin/settings', s0); } catch (e) {
+          out.innerHTML = '<span style="color:var(--red)">保存配置失败：' + esc(e.message) + '</span>';
+          return;
+        }
+        let list;
+        try { list = (await api.get('/api/tts/ref-voices')).items || []; }
+        catch (e) {
+          out.innerHTML = '<span style="color:var(--red)">读取目录失败：' + esc(e.message) + '</span>';
+          return;
+        }
+        pregBtn.disabled = true;
+        const todo = list.filter(function (x) { return !x.demo; });
+        const already = list.length - todo.length;
+        let ok = 0, fail = 0;
+        for (let i = 0; i < todo.length; i++) {
+          out.innerHTML = '生成中 ' + (i + 1) + ' / ' + todo.length + '：' + esc(todo[i].name) +
+            ' <span class="spinner"></span><br>已完成 ' + (already + ok) + ' · 失败 ' + fail + ' · 共 ' + list.length;
+          try {
+            const resp = await fetch('/api/tts/ref-voices/' + encodeURIComponent(todo[i].key) + '/demo',
+              { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            ok++;
+          } catch (e) { fail++; }
+        }
+        out.innerHTML = fail
+          ? '<span style="color:var(--amber)">完成：新生成 ' + ok + ' 个，失败 ' + fail +
+            ' 个（未生成的可能是 Key 未配置或上游限流，可稍后重试）</span>'
+          : '<span style="color:var(--green)">全部就绪：' + list.length + ' 个试听音频已生成完毕，前台可直接播放。</span>';
+        pregBtn.disabled = false;
+      });
+    }
   }
 
   // ============ 账号 ============

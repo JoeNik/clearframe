@@ -604,3 +604,57 @@ func urlEncode(s string) string {
 
 var _ = json.Marshal
 var _ = filepath.Base
+
+// ---------- 参考音色 ----------
+
+// handleRefVoices 参考音色目录（官方预置 + 原创设计，含试听缓存状态）
+func (s *Server) handleRefVoices(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireTTS(w, r); !ok {
+		return
+	}
+	items := tts.ReferenceVoices()
+	for i := range items {
+		items[i].Demo = s.st.HasVoiceDemo(items[i].Key)
+	}
+	writeOK(w, map[string]any{"items": items})
+}
+
+// handleRefVoiceDemo 播放试听：命中缓存直接回，未命中现场合成并缓存
+func (s *Server) handleRefVoiceDemo(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireTTS(w, r); !ok {
+		return
+	}
+	key := r.PathValue("key")
+	v, found := tts.FindReferenceVoice(key)
+	if !found {
+		writeErr(w, http.StatusNotFound, "not_found", "参考音色不存在")
+		return
+	}
+	if audio, mime, ok := s.st.GetVoiceDemo(key); ok {
+		w.Header().Set("Content-Type", mime)
+		w.Header().Set("Cache-Control", "private, max-age=86400")
+		w.Write(audio)
+		return
+	}
+	client, _ := s.ttsClient()
+	req := tts.SynthRequest{Text: v.Sentence, Format: "wav", MaxChars: 300}
+	if v.Kind == "preset" {
+		req.Mode = tts.ModePreset
+		req.Voice = v.Voice
+	} else {
+		req.Mode = tts.ModeDesign
+		req.DesignHint = v.Hint
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
+	defer cancel()
+	audio, err := client.Synthesize(ctx, req)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "synth", err.Error())
+		return
+	}
+	mime := "audio/wav"
+	s.st.SaveVoiceDemo(key, audio, mime)
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	w.Write(audio)
+}

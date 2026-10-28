@@ -1909,3 +1909,49 @@ details.acc-dev > .panel-body { border-top: 1px solid var(--line); }
 .author-card { display: flex; flex-direction: column; }
 .video-table th.vt-chk-head, .video-table td.vt-chk { width: 34px; text-align: center; }
 .video-table input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+/* 参考音色卡片（音色工坊） */
+.ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+.ref-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+  min-width: 0;
+  transition: border-color var(--t), background var(--t);
+}
+.ref-card:hover { border-color: var(--line-2); }
+.ref-card.sel { border-color: var(--accent-line); background: var(--accent-dim); }
+.ref-play {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  flex: none;
+  border: 1px solid var(--line-2);
+  background: var(--bg-3);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+  transition: all var(--t);
+}
+.ref-play:hover { border-color: var(--accent-line); color: var(--accent); }
+.ref-play.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.ref-main { min-width: 0; flex: 1; }
+.ref-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ref-desc { font-size: 12px; color: var(--text-3); line-height: 1.6; margin-top: 3px; }

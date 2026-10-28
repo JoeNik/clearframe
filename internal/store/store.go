@@ -135,6 +135,13 @@ CREATE TABLE IF NOT EXISTS email_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes(email, purpose);
 
+CREATE TABLE IF NOT EXISTS voice_demos (
+  key TEXT PRIMARY KEY,
+  audio BLOB NOT NULL,
+  mime TEXT NOT NULL DEFAULT 'audio/wav',
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS voices (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,

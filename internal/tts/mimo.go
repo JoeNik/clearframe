@@ -54,6 +54,105 @@ var StylePresets = []struct {
 	{"soft", "温柔低语", "用与参考音频相同的音色，轻声、温柔地说话，气息柔和，语速偏慢，句尾自然收住。"},
 }
 
+// ReferenceVoice 参考音色目录：官方预置音色 + 原创设计风格。
+// 设计音色全部由文字描述生成，是本站原创的人设风格，
+// 不模仿、不冒充任何真实人物（真人声音受声音权益保护，未经授权不得克隆）。
+type ReferenceVoice struct {
+	Key      string `json:"key"`
+	Kind     string `json:"kind"` // preset | design
+	Name     string `json:"name"`
+	Desc     string `json:"desc"`
+	Sex      string `json:"sex"`
+	Lang     string `json:"lang"`
+	Voice    string `json:"voice,omitempty"` // preset：官方音色名
+	Hint     string `json:"hint,omitempty"`  // design：音色描述
+	Sentence string `json:"sentence"`        // 试听台词
+	Demo     bool   `json:"demo"`            // 试听音频是否已缓存（由 API 层填充）
+}
+
+// referenceDesigns 原创设计音色（design 模式）
+var referenceDesigns = []ReferenceVoice{
+	{Key: "design:warm-radio", Kind: "design", Name: "暖甜夜话", Sex: "女", Lang: "zh",
+		Desc: "清亮甜润的年轻女声，像深夜电台主播，温柔治愈",
+		Hint: "二十多岁的年轻女声，声音清亮甜润、气息柔和，像深夜电台的主播，温柔治愈，语速舒缓，句尾自然收住，亲切而不腻。"},
+	{Key: "design:energetic-host", Kind: "design", Name: "元气好物官", Sex: "女", Lang: "zh",
+		Desc: "明亮有元气的女声，语速轻快、情绪饱满，好物分享风",
+		Hint: "二十多岁的年轻女声，声音明亮清脆、充满元气，语速轻快活泼，情绪饱满有感染力，像热情的购物分享博主，字字有精神。"},
+	{Key: "design:poised-lady", Kind: "design", Name: "知性御姐", Sex: "女", Lang: "zh",
+		Desc: "低沉优雅的成熟女声，从容有说服力",
+		Hint: "三十岁左右的成熟女性声音，偏低沉优雅，气质知性从容，吐字清晰，语速平稳，有一种见过世面的说服力与分寸感。"},
+	{Key: "design:soft-cute", Kind: "design", Name: "软萌小甜心", Sex: "女", Lang: "zh",
+		Desc: "软糯甜美的年轻女声，尾音俏皮上扬",
+		Hint: "二十岁出头的年轻女声，音色软糯甜美，气息轻柔，尾音自然上扬带一点俏皮，可爱但不做作，语速适中偏慢。"},
+	{Key: "design:cool-fairy", Kind: "design", Name: "清冷仙气", Sex: "女", Lang: "zh",
+		Desc: "清冷空灵的古风女声，淡雅疏离",
+		Hint: "年轻女声，声线清冷空灵、干净纯粹，气息绵长，像古风配音与仙侠旁白，语速偏慢，淡雅而略带疏离感。"},
+	{Key: "design:magnetic-bass", Kind: "design", Name: "磁性低音炮", Sex: "男", Lang: "zh",
+		Desc: "低音浑厚有磁性的男声，纪录片旁白质感",
+		Hint: "三十五岁左右的男声，低音浑厚有磁性，胸腔共鸣明显，沉稳大气，语速从容，像高质量纪录片与广告旁白。"},
+	{Key: "design:sunny-boy", Kind: "design", Name: "阳光大男孩", Sex: "男", Lang: "zh",
+		Desc: "明亮清爽有朝气的男声，运动博主风",
+		Hint: "二十多岁的男声，明亮清爽、有朝气，语速轻快自然，情绪阳光积极，像户外运动与旅行 vlog 博主的口吻。"},
+	{Key: "design:gentry-uncle", Kind: "design", Name: "儒雅说书人", Sex: "男", Lang: "zh",
+		Desc: "温润儒雅的中年男声，娓娓道来",
+		Hint: "四十岁左右的男声，温润儒雅、不急不躁，吐字讲究，语速从容，像读书人与说书人，娓娓道来有书卷气。"},
+	{Key: "design:northern-buddy", Kind: "design", Name: "东北老铁", Sex: "男", Lang: "zh",
+		Desc: "豪爽热情的东北男声，自带幽默感",
+		Hint: "三十岁男声，东北口音底子，豪爽热情，嗓门敞亮，语气自带幽默感，像唠嗑一样自然，接地气不做作。"},
+	{Key: "design:suspense-narrator", Kind: "design", Name: "悬疑解说", Sex: "男", Lang: "zh",
+		Desc: "冷静克制的男声，带神秘感，解说节奏",
+		Hint: "三十五岁左右的男声，冷静克制、略带神秘感，吐字有力，语速沉稳有节奏，句间留白，像悬疑推理类视频的解说。"},
+}
+
+// ReferenceVoices 返回完整参考音色目录（官方预置 + 原创设计）
+func ReferenceVoices() []ReferenceVoice {
+	descOf := map[string]string{
+		"mimo_default": "官方默认音色，稳定百搭",
+		"冰糖":          "官方女声，清亮甜美，最受欢迎",
+		"茉莉":          "官方女声，温婉大方，叙述感强",
+		"苏打":          "官方男声，干净清爽，日常口播",
+		"白桦":          "官方男声，沉稳磁性，朗读向",
+		"Mia":          "英文女声，自然流畅",
+		"Chloe":        "英文女声，明亮活泼",
+		"Milo":         "英文男声，沉稳清晰",
+		"Dean":         "英文男声，低沉有质感",
+	}
+	sentenceOf := map[string]string{
+		"mimo_default": "你好，我是清影的默认音色。粘贴链接，原画直出，文字变成声音也一样干脆。",
+		"冰糖":           "嗨，我是冰糖。把链接交给我，无水印的原画视频马上还给你。",
+		"茉莉":           "我是茉莉。一段文字，一点耐心，就能变成有温度的声音。",
+		"苏打":           "我是苏打。喜欢的内容别只收藏，让声音陪你在路上继续听。",
+		"白桦":           "我是白桦。读一段文字给你听，愿这个下午刚好安静。",
+		"Mia":           "Hi, I'm Mia. Paste a link, and I will turn words into voice in seconds.",
+		"Chloe":         "Hey there, I'm Chloe. Text in, voice out — that simple.",
+		"Milo":          "This is Milo. Your words deserve a good voice.",
+		"Dean":          "Dean here. Deep, clear, and ready to read for you.",
+	}
+	out := make([]ReferenceVoice, 0, len(PresetVoices)+len(referenceDesigns))
+	for _, p := range PresetVoices {
+		out = append(out, ReferenceVoice{
+			Key: "preset:" + p.ID, Kind: "preset", Name: p.Name,
+			Desc: descOf[p.ID], Sex: p.Sex, Lang: p.Lang, Voice: p.ID,
+			Sentence: sentenceOf[p.ID],
+		})
+	}
+	for _, d := range referenceDesigns {
+		d.Sentence = "你好呀，我是「" + d.Name + "」。这是我的原创声音，希望你会喜欢——清影，让文字开口说话。"
+		out = append(out, d)
+	}
+	return out
+}
+
+// FindReferenceVoice 按 key 查找参考音色
+func FindReferenceVoice(key string) (ReferenceVoice, bool) {
+	for _, v := range ReferenceVoices() {
+		if v.Key == key {
+			return v, true
+		}
+	}
+	return ReferenceVoice{}, false
+}
+
 // Client MiMo 语音客户端
 type Client struct {
 	BaseURL string

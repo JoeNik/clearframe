@@ -108,6 +108,8 @@ func (s *Server) routes() {
 
 	// ---- 音色工坊 ----
 	m.HandleFunc("GET /api/tts/config", s.handleTTSConfig)
+	m.HandleFunc("GET /api/tts/ref-voices", s.handleRefVoices)
+	m.HandleFunc("GET /api/tts/ref-voices/{key}/demo", s.handleRefVoiceDemo)
 	m.HandleFunc("GET /api/tts/voices", s.handleListVoices)
 	m.HandleFunc("POST /api/tts/voices", s.handleCreateVoice)
 	m.HandleFunc("PATCH /api/tts/voices/{id}", s.handleRenameVoice)
