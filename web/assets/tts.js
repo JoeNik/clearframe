@@ -390,9 +390,26 @@
       const res = await api.get('/api/tts/ref-voices');
       refItems = res.items || [];
       renderRefGrid(refItems);
+      renderPresetSelect(refItems, (state.cfg || {}).defaultVoice);
     } catch (e) {
       grid.innerHTML = '<span class="field-hint">参考音色加载失败：' + esc(e.message) + '</span>';
     }
+  }
+
+  // 预置音色下拉：官方预置 + 原创设计两组，全部可作为预置选项直接合成
+  function renderPresetSelect(items, defaultVoice) {
+    const sel = $('#selPreset');
+    if (!sel) return;
+    const official = items.filter(function (v) { return v.kind === 'preset'; });
+    const designed = items.filter(function (v) { return v.kind === 'design'; });
+    const opt = function (v) {
+      return '<option value="ref:' + esc(v.key) + '">' + esc(v.name) + '（' + esc(v.sex) + ' · ' + esc(v.lang.toUpperCase()) + '）</option>';
+    };
+    sel.innerHTML =
+      '<optgroup label="官方预置">' + official.map(opt).join('') + '</optgroup>' +
+      '<optgroup label="原创设计（网红风格）">' + designed.map(opt).join('') + '</optgroup>';
+    const def = defaultVoice ? items.find(function (v) { return v.kind === 'preset' && v.voice === defaultVoice; }) : null;
+    if (def) sel.value = 'ref:' + def.key;
   }
 
   function renderRefGrid(items) {
@@ -421,7 +438,7 @@
     // 选用：联动合成模式与参数
     if (v.kind === 'preset') {
       setModeTab('preset');
-      $('#selPreset').value = v.voice;
+      $('#selPreset').value = 'ref:' + v.key;
     } else {
       setModeTab('design');
       $('#designHint').value = v.hint;
@@ -736,13 +753,7 @@
       ? ''
       : '<span style="color:var(--red)">后台尚未配置 MIMO 密钥，生成会失败</span>';
 
-    // 预置音色
-    $('#selPreset').innerHTML = (cfg.presets || []).map(function (p) {
-      return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' · ' + esc(p.lang.toUpperCase()) + ' ' + esc(p.sex) + '</option>';
-    }).join('');
-    if (cfg.defaultVoice) $('#selPreset').value = cfg.defaultVoice;
-
-    // 参考音色
+    // 预置音色下拉由参考音色目录填充（含官方预置与原创设计两组）
     loadRefVoices();
 
     // 风格

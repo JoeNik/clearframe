@@ -324,6 +324,20 @@ func (s *Server) handleSynthesize(w http.ResponseWriter, r *http.Request) {
 		if req.Voice == "" {
 			req.Voice = cfg.DefaultVoice
 		}
+		// ref: 前缀 = 本站参考音色目录（官方预置或原创设计人设）。
+		// 设计人设没有固定音色 ID，按目录里的描述转 design 模式生成。
+		if strings.HasPrefix(req.Voice, "ref:") {
+			if v, ok := tts.FindReferenceVoice(strings.TrimPrefix(req.Voice, "ref:")); ok {
+				voiceName = "参考 · " + v.Name
+				if v.Kind == "design" {
+					req.Mode = tts.ModeDesign
+					req.DesignHint = v.Hint
+				} else {
+					req.Voice = v.Voice
+				}
+				break
+			}
+		}
 		voiceName = "预置 · " + req.Voice
 	case tts.ModeDesign:
 		req.Mode = tts.ModeDesign
